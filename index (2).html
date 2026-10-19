@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Kaffeekasse Wache</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kaffeekasse">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2341A6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{
+  --paper:#F4F5F3; --row:#E7E9E6; --surface:#FFFFFF; --line:#CDD1CC;
+  --text:#1A1D20; --muted:#5C636A; --ink:#2341A6; --ink-soft:#E3E8FA;
+  --debt:#B3261E; --credit:#2B6A3C; --danger:#B3261E;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#141619; --row:#1D2024; --surface:#1A1D21; --line:#343A40;
+    --text:#E8EAEC; --muted:#9BA2A9; --ink:#93ABFF; --ink-soft:#232C4A;
+    --debt:#FF8F84; --credit:#80D39B; --danger:#FF8F84;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#141619; --row:#1D2024; --surface:#1A1D21; --line:#343A40;
+  --text:#E8EAEC; --muted:#9BA2A9; --ink:#93ABFF; --ink-soft:#232C4A;
+  --debt:#FF8F84; --credit:#80D39B; --danger:#FF8F84;
+  color-scheme: dark;
+}
+:root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); }
+*,*::before,*::after{ box-sizing:inherit; }
+body{
+  margin:0; background:var(--paper); color:var(--text);
+  font-family:system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size:17px; line-height:1.45;
+}
+body::before{ content:""; position:fixed; top:0; left:0; right:0; height:env(safe-area-inset-top,0px); z-index:10; background:var(--surface); }
+button,input{ font:inherit; color:inherit; }
+html, body, button, label, .prod, #plist button{ touch-action:manipulation; }
+button, .prod, label.btn{ -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; }
+button{ cursor:pointer; }
+:focus-visible{ outline:3px solid var(--ink); outline-offset:2px; }
+.num{ font-variant-numeric:tabular-nums; }
+
+header.top{
+  position:sticky; top:env(safe-area-inset-top,0px); z-index:5;
+  background:var(--surface); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding:10px 16px;
+}
+header.top h1{ margin:0; font-size:1.25rem; letter-spacing:-.01em; }
+header.top h1 span{ color:var(--muted); font-weight:400; }
+nav.tabs{ display:flex; gap:4px; margin-left:auto; overflow-x:auto; }
+nav.tabs button{
+  border:0; background:none; padding:8px 12px; border-radius:6px; color:var(--muted); white-space:nowrap;
+}
+nav.tabs button[aria-current="page"]{ color:var(--text); background:var(--row); font-weight:700; }
+
+main{ max-width:1200px; margin:0 auto; padding:16px; }
+.view[hidden]{ display:none; }
+
+/* Liste */
+.split{ display:grid; grid-template-columns:minmax(260px,360px) 1fr; gap:20px; align-items:start; }
+.people{ background:var(--surface); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.people .filter{ display:flex; gap:8px; padding:10px; border-bottom:1px solid var(--line); }
+.people .filter input{ flex:1; min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:var(--paper); }
+#plist{ list-style:none; margin:0; padding:0; max-height:calc(100vh - 210px); overflow-y:auto; }
+#plist li:nth-child(even) button{ background:var(--row); }
+#plist li.grp{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:14px 14px 6px; font-weight:700; color:var(--muted); font-size:.9rem; border-bottom:2px solid var(--line); background:var(--surface); position:sticky; top:0; z-index:1; }
+#plist li.grp .btn{ color:var(--text); }
+.gastbadge{ display:inline-block; vertical-align:middle; font-size:.8rem; font-weight:700; color:var(--ink); border:1.5px solid var(--ink); border-radius:4px; padding:1px 6px; margin-left:8px; }
+#plist button{
+  width:100%; display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center;
+  text-align:left; border:0; background:transparent; padding:10px 14px; min-height:52px;
+  border-left:4px solid transparent;
+}
+#plist button[aria-current="true"]{ border-left-color:var(--ink); background:var(--ink-soft); }
+#plist .pname{ font-weight:700; }
+#plist .ptoday{ grid-column:1; font-size:.85rem; color:var(--ink); }
+#plist .psaldo{ grid-row:1 / span 2; grid-column:2; }
+.neg{ color:var(--debt); } .pos{ color:var(--credit); } .zero{ color:var(--muted); }
+
+.btn{ border:1px solid var(--line); background:var(--surface); padding:9px 14px; border-radius:6px; min-height:42px; }
+.btn.primary{ background:var(--ink); border-color:var(--ink); color:var(--surface); font-weight:700; }
+.btn.danger{ color:var(--danger); }
+.btn.small{ padding:4px 10px; min-height:32px; font-size:.9rem; }
+.btn:disabled{ opacity:.5; cursor:default; }
+
+.detail{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:18px; min-height:300px; }
+.detail .empty{ color:var(--muted); padding:40px 10px; text-align:center; }
+.phead{ display:flex; align-items:flex-start; gap:12px; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:16px; }
+.phead h2{ margin:0; font-size:1.9rem; line-height:1.1; }
+.phead .back{ display:none; }
+.saldo{ margin-left:auto; text-align:right; }
+.saldo .big{ font-size:2.2rem; font-weight:700; line-height:1; }
+.saldo .lbl{ font-size:.9rem; color:var(--muted); }
+
+.prod-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; }
+.prod{
+  position:relative; border:1px solid var(--line); background:var(--paper); border-radius:8px;
+  padding:12px 10px; min-height:76px; text-align:left; display:flex; flex-direction:column; justify-content:space-between;
+  transition:background .15s;
+}
+.prod:active{ background:var(--ink-soft); }
+.prod .pn{ font-weight:700; line-height:1.2; }
+.prod .pp{ color:var(--muted); font-size:.9rem; }
+.prod .cnt{ position:absolute; top:6px; right:8px; color:var(--ink); }
+.prod.flash{ animation:flash .5s ease-out; }
+@keyframes flash{ from{ background:var(--ink-soft); border-color:var(--ink);} to{ background:var(--paper);} }
+
+h3{ font-size:1rem; margin:22px 0 8px; }
+.today{ list-style:none; margin:0; padding:0; border-top:1px solid var(--line); }
+.today li{ display:grid; grid-template-columns:1fr auto auto auto; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.today .tl{ color:var(--ink); display:flex; align-items:center; gap:6px; }
+.today .sum{ font-weight:700; }
+.muted{ color:var(--muted); }
+.tally{ display:block; stroke:var(--ink); stroke-width:2; stroke-linecap:round; fill:none; overflow:visible; }
+.actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+
+/* Tabellen */
+.card{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:18px; margin-bottom:20px; }
+.card h2{ margin:0 0 6px; font-size:1.35rem; }
+.tablewrap{ overflow-x:auto; }
+table{ border-collapse:collapse; width:100%; }
+th,td{ padding:8px 10px; text-align:left; border-bottom:1px solid var(--line); }
+th{ font-size:.9rem; color:var(--muted); font-weight:700; }
+td.r,th.r{ text-align:right; }
+tbody tr:nth-child(even){ background:var(--row); }
+tr.active td:first-child{ border-left:4px solid var(--ink); }
+
+.prow{ display:grid; grid-template-columns:1fr 110px auto auto auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.prow input[type=text], .prow input[inputmode]{ padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); min-width:0; }
+.prow label{ font-size:.85rem; color:var(--muted); display:flex; gap:6px; align-items:center; white-space:nowrap; }
+.prow .ord{ display:flex; gap:4px; }
+
+.br-tab td.anz{ font-size:2rem; font-weight:700; color:var(--ink); width:1%; white-space:nowrap; padding-right:18px; }
+.br-tab td.nm{ font-size:1.3rem; font-weight:700; }
+.br-tab td .wer{ display:block; font-size:.9rem; font-weight:400; color:var(--muted); }
+.br-tab tfoot td{ font-weight:700; border-bottom:0; }
+.ts-grund{ font-size:.85rem; color:var(--muted); }
+.ts-tab td.best{ color:var(--muted); font-size:.92rem; }
+.hist summary{ cursor:pointer; padding:10px 0; border-bottom:1px solid var(--line); }
+.besorg{ list-style:none; margin:0; padding:0; }
+.besorg li{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+.besorg li span{ flex:1; }
+.addrow{ display:flex; gap:8px; margin-top:12px; }
+.addrow input{ flex:1; min-width:0; padding:9px 10px; border:1px solid var(--line); border-radius:6px; background:var(--paper); }
+
+.overlay{ position:fixed; top:0; left:0; right:0; bottom:0; z-index:30; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
+.overlay[hidden]{ display:none; }
+dialog{ display:block; position:static; margin:0; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--text); padding:20px; width:420px; max-width:92vw; max-height:90vh; overflow-y:auto; }
+dialog h2{ margin:0 0 8px; font-size:1.3rem; }
+dialog p{ margin:0 0 12px; color:var(--muted); }
+dialog label{ display:block; font-weight:700; margin:10px 0 4px; }
+dialog input{ width:100%; padding:10px; border:1px solid var(--line); border-radius:6px; background:var(--paper); font-size:1.1rem; }
+dialog .hint{ font-size:.85rem; color:var(--muted); margin-top:4px; }
+dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
+
+#toast{
+  position:fixed; left:50%; transform:translateX(-50%);
+  bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:20;
+  background:var(--text); color:var(--paper); border-radius:8px; padding:10px 12px 10px 16px;
+  display:flex; align-items:center; gap:14px; max-width:92vw; box-shadow:0 4px 16px rgba(0,0,0,.25);
+}
+#toast[hidden]{ display:none; }
+#toast button{ background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:4px 10px; }
+.foot{ color:var(--muted); font-size:.85rem; text-align:center; margin:24px 0 8px; }
+.banner{ background:var(--ink-soft); border:1px solid var(--ink); border-radius:8px; padding:10px 14px; margin-bottom:14px; }
+
+@media (max-width:760px){
+  main{ padding:10px; }
+  .split{ grid-template-columns:1fr; }
+  .split.has-sel .people{ display:none; }
+  .split:not(.has-sel) .detail{ display:none; }
+  .phead .back{ display:inline-block; }
+  #plist{ max-height:none; }
+  .saldo{ margin-left:0; width:100%; text-align:left; }
+  .prow{ grid-template-columns:1fr 90px; }
+  .prow label, .prow .ord{ grid-column:span 1; }
+}
+@media (prefers-reduced-motion:reduce){ .prod.flash{ animation:none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Kaffeekasse <span>Wache</span></h1>
+  <nav class="tabs" aria-label="Bereiche">
+    <button data-tab="liste" aria-current="page">Liste</button>
+    <button data-tab="broetchen">Brötchen</button>
+    <button data-tab="abschluss">Dienst abschließen</button>
+    <button data-tab="produkte">Produkte</button>
+    <button data-tab="besorg">Besorg mal</button>
+    <button data-tab="sicherung">Sicherung</button>
+    <button id="fullscreen" title="Vollbild">⛶</button>
+  </nav>
+</header>
+
+<main>
+  <div id="banner"></div>
+
+  <section class="view" id="v-liste">
+    <div class="split" id="split">
+      <aside class="people">
+        <div class="filter">
+          <input id="filter" type="search" placeholder="Name suchen" aria-label="Name suchen">
+          <button class="btn" id="addPerson">+ Person</button>
+        </div>
+        <ul id="plist"></ul>
+      </aside>
+      <section class="detail" id="detail" aria-live="polite"></section>
+    </div>
+  </section>
+
+  <section class="view" id="v-broetchen" hidden>
+    <div class="card">
+      <h2 id="brTitel">Brötchenliste</h2>
+      <p class="muted">Alle Brötchen, die heute seit 0 Uhr gebucht wurden. Welche Produkte als Brötchen zählen, stellst du unter „Produkte“ ein.</p>
+      <div id="brListe"></div>
+      <div class="actions">
+        <button class="btn primary" id="brTeilen">Liste senden</button>
+        <button class="btn" id="brNamen" aria-pressed="false">Namen anzeigen</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-abschluss" hidden>
+    <div class="card">
+      <h2>Dienst abschließen</h2>
+      <p class="muted">Alle Buchungen seit dem letzten Abschluss werden in den Kontostand übernommen. Der Abschluss wird unten im Verlauf gespeichert.</p>
+      <div class="tablewrap" id="abPreview"></div>
+      <div class="actions"><button class="btn primary" id="doAbschluss">Dienst abschließen</button></div>
+    </div>
+    <div class="card">
+      <h2>Verlauf</h2>
+      <div id="abHist"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-produkte" hidden>
+    <div class="card">
+      <h2>Produkte und Preise</h2>
+      <p class="muted">Änderungen werden sofort gespeichert. Bei „Preis abfragen“ wird beim Buchen nach dem Betrag gefragt, z. B. für Abendessen oder Kuchen.</p>
+      <div id="prodList"></div>
+      <div class="actions">
+        <button class="btn" id="addProd">+ Produkt</button>
+        <button class="btn" id="seedProd" hidden>Produkte der Papierliste anlegen</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-besorg" hidden>
+    <div class="card">
+      <h2>Besorg mal</h2>
+      <ul class="besorg" id="besorgList"></ul>
+      <div class="addrow">
+        <input id="besorgIn" placeholder="z. B. Milch, Filtertüten" aria-label="Neuer Eintrag">
+        <button class="btn primary" id="besorgAdd">Hinzufügen</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-sicherung" hidden>
+    <div class="card">
+      <h2>Sicherung</h2>
+      <p class="muted">Alle Daten liegen nur auf diesem Tablet. Speichere regelmäßig eine Sicherung, zum Beispiel einmal pro Woche. Danach öffnet sich das Teilen-Menü: Wähle „In Dateien sichern“ oder schick sie dir per Mail. Geht das Tablet kaputt, kannst du die Sicherung auf einem neuen Gerät laden.</p>
+      <p id="lastBackup"></p>
+      <div class="actions">
+        <button class="btn primary" id="backupSave">Sicherung speichern</button>
+        <button class="btn" id="csvSave">Kontostände als Tabelle (CSV)</button>
+        <label class="btn" for="backupLoad">Sicherung laden</label>
+        <input type="file" id="backupLoad" accept=".json,application/json" hidden>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Tagesstände</h2>
+      <p class="muted">Jeden Abend um 23 Uhr speichert die App automatisch alle Kontostände und die Bestellungen des Tages. Die letzten 60 Tage bleiben erhalten. War die App um 23 Uhr geschlossen, wird der Tagesstand beim nächsten Öffnen nachgeholt. Hat sich jemand verbucht oder wurde versehentlich etwas gelöscht, kannst du hier einen früheren Stand zurückholen.</p>
+      <div id="tsListe"></div>
+    </div>
+  </section>
+
+  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert.</p>
+</main>
+
+<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button></div>
+
+<div class="overlay" id="dlg" hidden><dialog open>
+  <form method="dialog" id="dlgForm">
+    <h2 id="dlgTitle"></h2>
+    <p id="dlgText"></p>
+    <div id="dlgFields"></div>
+    <div class="row">
+      <button class="btn" value="cancel" type="button" id="dlgCancel">Abbrechen</button>
+      <button class="btn primary" value="ok" id="dlgOk">OK</button>
+    </div>
+  </form>
+</dialog></div>
+
+<script>
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
+(function() {
+  "use strict";
+  const COLLS = ["personen", "produkte", "buchungen", "abschluesse", "liste"];
+  const S = { personen: {}, produkte: {}, buchungen: {}, abschluesse: {}, liste: {} };
+  const ui = { tab: "liste", sel: null, filter: "" };
+  let store = null;
+  const LSKEY = "kaffeekasse-v1";
+  const DEFAULT_PRODUKTE = [
+    ["Kaffeeflat", 1],
+    ["Normales", 1.3],
+    ["Sunny", 1.5],
+    ["K\xF6rner", 1.8],
+    ["Roggen", 1.8],
+    ["Dinkel", 1.8],
+    ["Banane", 0.35],
+    ["Ei", 0.35],
+    ["Cola, Limo", 1.1],
+    ["Mars, Snickers", 0.6],
+    ["Duplo, Hanuta", 0.3],
+    ["Eis", 0.6],
+    ["Gummi (2 St\xFCck)", 0.15],
+    ["Kuchen", 1, true],
+    ["Abendessen", 5, true],
+    ["Sonstiges", 0, true]
+  ];
+  const DEFAULT_PERSONEN = [];
+  const BROETCHEN = ["Normales", "Sunny", "K\xF6rner", "Roggen", "Dinkel"];
+  const $ = (s) => document.querySelector(s);
+  const fmt = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+  const money = (v) => fmt.format(Math.round(v * 100) / 100).replace("-", "\u2212");
+  const cls = (v) => v < -4e-3 ? "neg" : v > 4e-3 ? "pos" : "zero";
+  const esc = (s) => String(s != null ? s : "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const uid = () => window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const parseMoney = (s) => {
+    const v = parseFloat(String(s).trim().replace(/\s/g, "").replace("\u20AC", "").replace(",", "."));
+    return isFinite(v) ? Math.round(v * 100) / 100 : NaN;
+  };
+  const r2 = (v) => Math.round(v * 100) / 100;
+  function localStore() {
+    try {
+      const raw = localStorage.getItem(LSKEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        COLLS.forEach((c) => S[c] = o[c] || {});
+      }
+    } catch (e) {
+    }
+    const save = () => {
+      try {
+        localStorage.setItem(LSKEY, JSON.stringify(S));
+      } catch (e) {
+      }
+    };
+    return {
+      mode: "local",
+      save,
+      async set(c, id, d) {
+        S[c][id] = d;
+        save();
+        render();
+      },
+      async del(c, id) {
+        delete S[c][id];
+        save();
+        render();
+      }
+    };
+  }
+  function seed() {
+    DEFAULT_PRODUKTE.forEach((p, i) => {
+      S.produkte["pr" + (i + 1)] = { name: p[0], preis: p[1], variabel: !!p[2], sort: i, broetchen: BROETCHEN.indexOf(p[0]) >= 0 };
+    });
+    DEFAULT_PERSONEN.forEach((p, i) => {
+      S.personen["ma" + (i + 1)] = { name: p[0], saldo: p[1], bisTs: 0, gast: !!p[2] };
+    });
+  }
+  function init() {
+    store = localStore();
+    if (!Object.keys(S.personen).length && !Object.keys(S.produkte).length && !localStorage.getItem(LSKEY)) {
+      seed();
+      store.save();
+    }
+    try {
+      if (!localStorage.getItem("kk-mig-gaeste")) {
+        const gaeste = ["Heining", "Wahlen", "Brodhede", "Wehking"];
+        Object.keys(S.personen).forEach((id) => {
+          const p = S.personen[id];
+          if (p.gast === void 0 && gaeste.indexOf(p.name) >= 0) p.gast = true;
+        });
+        store.save();
+        localStorage.setItem("kk-mig-gaeste", "1");
+      }
+    } catch (e) {
+    }
+    migBroetchen();
+    try {
+      if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    } catch (e) {
+    }
+    if (!storageOk()) banner("Dieser Browser kann hier nichts dauerhaft speichern. Bitte die Datei in einem anderen Browser oder in einer Kiosk-App \xF6ffnen.");
+    render();
+  }
+  function migBroetchen() {
+    const ids = Object.keys(S.produkte);
+    if (!ids.length || ids.some((id) => S.produkte[id].broetchen !== void 0)) return;
+    ids.forEach((id) => {
+      S.produkte[id].broetchen = BROETCHEN.indexOf(S.produkte[id].name) >= 0;
+    });
+    store.save();
+  }
+  function storageOk() {
+    try {
+      localStorage.setItem("kk-test", "1");
+      localStorage.removeItem("kk-test");
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function persons() {
+    return Object.entries(S.personen).map(([id, p]) => __spreadValues({ id }, p)).sort((a, b) => (a.name || "").localeCompare(b.name || "", "de"));
+  }
+  function produkte() {
+    return Object.entries(S.produkte).map(([id, p]) => __spreadValues({ id }, p)).sort((a, b) => {
+      var _a, _b;
+      return ((_a = a.sort) != null ? _a : 0) - ((_b = b.sort) != null ? _b : 0) || (a.name || "").localeCompare(b.name || "", "de");
+    });
+  }
+  function offeneBuchungen(pid) {
+    const p = S.personen[pid];
+    if (!p) return [];
+    const bis = p.bisTs || 0;
+    return Object.entries(S.buchungen).map(([id, b]) => __spreadValues({ id }, b)).filter((b) => b.personId === pid && (b.ts || 0) > bis).sort((a, b) => a.ts - b.ts);
+  }
+  function stand(pid) {
+    const p = S.personen[pid];
+    if (!p) return { alt: 0, umsatz: 0, neu: 0, items: [] };
+    const items = offeneBuchungen(pid);
+    const umsatz = r2(items.reduce((s, b) => s + (b.betrag || 0), 0));
+    return { alt: p.saldo || 0, umsatz, neu: r2((p.saldo || 0) + umsatz), items };
+  }
+  function tally(n) {
+    const full = Math.floor(n / 5), rest = n % 5;
+    let x = 2, out = "";
+    const line = (x1, y1, x2, y2) => '<line x1="'.concat(x1, '" y1="').concat(y1, '" x2="').concat(x2, '" y2="').concat(y2, '"/>');
+    for (let g = 0; g < full; g++) {
+      for (let i = 0; i < 4; i++) out += line(x + i * 4, 3 + i % 2, x + i * 4 + 0.8, 17);
+      out += line(x - 2, 14, x + 15, 6);
+      x += 22;
+    }
+    for (let i = 0; i < rest; i++) out += line(x + i * 4, 3 + i % 2, x + i * 4 + 0.8, 17);
+    const w = Math.max(x + rest * 4, 8);
+    return '<svg class="tally" width="'.concat(w, '" height="20" viewBox="0 0 ').concat(w, ' 20" aria-hidden="true">').concat(out, "</svg>");
+  }
+  function ask({ title, text = "", fields = [], ok = "OK", danger = false }) {
+    return new Promise((resolve) => {
+      const d = $("#dlg");
+      $("#dlgTitle").textContent = title;
+      $("#dlgText").textContent = text;
+      $("#dlgText").hidden = !text;
+      $("#dlgFields").innerHTML = fields.map((f, i) => {
+        var _a;
+        return '\n      <label for="f'.concat(i, '">').concat(esc(f.label), '</label>\n      <input id="f').concat(i, '" ').concat(f.money ? 'inputmode="decimal"' : "", ' value="').concat(esc((_a = f.value) != null ? _a : ""), '" placeholder="').concat(esc(f.placeholder || ""), '" autocomplete="off">\n      ').concat(f.hint ? '<div class="hint">'.concat(esc(f.hint), "</div>") : "");
+      }).join("");
+      const okBtn = $("#dlgOk");
+      okBtn.textContent = ok;
+      okBtn.className = "btn " + (danger ? "danger" : "primary");
+      const done = (v) => {
+        d.hidden = true;
+        cleanup();
+        resolve(v);
+      };
+      const onSubmit = (e) => {
+        e.preventDefault();
+        done(fields.map((_, i) => $("#f" + i).value));
+      };
+      const onCancel = () => done(null);
+      const onKey = (e) => {
+        if (e.key === "Escape") done(null);
+      };
+      function cleanup() {
+        $("#dlgForm").removeEventListener("submit", onSubmit);
+        $("#dlgCancel").removeEventListener("click", onCancel);
+        document.removeEventListener("keydown", onKey);
+      }
+      $("#dlgForm").addEventListener("submit", onSubmit);
+      $("#dlgCancel").addEventListener("click", onCancel);
+      document.addEventListener("keydown", onKey);
+      d.hidden = false;
+      const first = $("#f0");
+      if (first) {
+        first.focus();
+        first.select();
+      } else okBtn.focus();
+    });
+  }
+  let toastTimer = null, undoFn = null;
+  function toast(msg, undo) {
+    $("#toastMsg").textContent = msg;
+    undoFn = undo || null;
+    $("#toastUndo").hidden = !undo;
+    $("#toast").hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      $("#toast").hidden = true;
+      undoFn = null;
+    }, undo ? 6e3 : 3500);
+  }
+  $("#toastUndo").addEventListener("click", () => {
+    if (undoFn) undoFn();
+    $("#toast").hidden = true;
+    undoFn = null;
+  });
+  function banner(msg) {
+    $("#banner").dataset.fix = msg ? "1" : "";
+    $("#banner").innerHTML = msg ? '<div class="banner">'.concat(esc(msg), "</div>") : "";
+  }
+  async function buchen(pid, prod) {
+    var _a, _c;
+    let betrag = prod.preis || 0, text = prod.name;
+    if (prod.variabel) {
+      const r = await ask({
+        title: prod.name,
+        text: "Betrag f\xFCr " + (((_a = S.personen[pid]) == null ? void 0 : _a.name) || ""),
+        fields: [
+          { label: "Betrag in \u20AC", value: prod.preis ? String(prod.preis).replace(".", ",") : "", money: true },
+          ...prod.preis ? [] : [{ label: "Notiz (optional)", placeholder: "z. B. Kaffeebohnen" }]
+        ],
+        ok: "Buchen"
+      });
+      if (!r) return;
+      betrag = parseMoney(r[0]);
+      if (!(betrag > 0)) {
+        toast("Bitte einen Betrag gr\xF6\xDFer als 0 eingeben.");
+        return;
+      }
+      if (r[1]) text = prod.name + ": " + r[1].trim();
+      if (prod.preis && betrag !== prod.preis) {
+        const _b = prod, { id: id2 } = _b, rest = __objRest(_b, ["id"]);
+        store.set("produkte", prod.id, __spreadProps(__spreadValues({}, rest), { preis: betrag })).catch(() => {
+        });
+      }
+    }
+    const id = uid();
+    try {
+      await store.set("buchungen", id, { personId: pid, produktId: prod.id, text, betrag: -r2(betrag), ts: Date.now(), art: "verbrauch" });
+    } catch (e) {
+      return;
+    }
+    const btn = document.querySelector('.prod[data-id="'.concat(String(prod.id).replace(/["\\]/g, ""), '"]'));
+    if (btn && btn.classList) {
+      btn.classList.remove("flash");
+      void btn.offsetWidth;
+      btn.classList.add("flash");
+    }
+    toast("".concat(text, " f\xFCr ").concat(((_c = S.personen[pid]) == null ? void 0 : _c.name) || "", " gebucht"), () => store.del("buchungen", id).catch(() => {
+    }));
+  }
+  async function einzahlen(pid) {
+    const r = await ask({
+      title: "Einzahlung",
+      text: "Bargeld, das " + S.personen[pid].name + " in die Kasse gelegt hat.",
+      fields: [{ label: "Betrag in \u20AC", money: true }],
+      ok: "Einzahlung buchen"
+    });
+    if (!r) return;
+    const v = parseMoney(r[0]);
+    if (!(v > 0)) {
+      toast("Bitte einen Betrag gr\xF6\xDFer als 0 eingeben.");
+      return;
+    }
+    const id = uid();
+    await store.set("buchungen", id, { personId: pid, text: "Einzahlung", betrag: v, ts: Date.now(), art: "einzahlung" }).catch(() => {
+    });
+    toast("Einzahlung \xFCber ".concat(money(v), " gebucht"), () => store.del("buchungen", id).catch(() => {
+    }));
+  }
+  async function korrigieren(pid) {
+    const st = stand(pid);
+    const r = await ask({
+      title: "Kontostand korrigieren",
+      text: "Aktuell: " + money(st.neu),
+      fields: [{ label: "Neuer Kontostand in \u20AC", value: String(st.neu).replace(".", ","), money: true, hint: "Schulden mit Minus eingeben, z. B. \u221212,50" }],
+      ok: "\xDCbernehmen"
+    });
+    if (!r) return;
+    const v = parseMoney(r[0].replace("\u2212", "-"));
+    if (isNaN(v)) {
+      toast("Bitte eine Zahl eingeben.");
+      return;
+    }
+    const diff = r2(v - st.neu);
+    if (Math.abs(diff) < 5e-3) return;
+    const id = uid();
+    await store.set("buchungen", id, { personId: pid, text: "Korrektur", betrag: diff, ts: Date.now(), art: "korrektur" }).catch(() => {
+    });
+    toast("Kontostand korrigiert", () => store.del("buchungen", id).catch(() => {
+    }));
+  }
+  async function personNeu(gast) {
+    const r = await ask({ title: gast ? "Gast hinzuf\xFCgen" : "Person zur Stammbesatzung hinzuf\xFCgen", fields: [
+      { label: "Name" },
+      { label: "Kontostand zum Start in \u20AC", value: "0", money: true, hint: "Schulden mit Minus eingeben, z. B. \u221212,50" }
+    ], ok: "Hinzuf\xFCgen" });
+    if (!r) return;
+    const name = r[0].trim();
+    if (!name) {
+      toast("Bitte einen Namen eingeben.");
+      return;
+    }
+    const saldo = parseMoney((r[1] || "0").replace("\u2212", "-"));
+    const id = uid();
+    await store.set("personen", id, { name, saldo: isNaN(saldo) ? 0 : saldo, bisTs: 0, created: Date.now(), gast: !!gast }).catch(() => {
+    });
+    ui.sel = id;
+    render();
+  }
+  async function personUmbenennen(pid) {
+    const p = S.personen[pid];
+    const r = await ask({ title: "Umbenennen", fields: [{ label: "Name", value: p.name }], ok: "Speichern" });
+    if (!r || !r[0].trim()) return;
+    await store.set("personen", pid, __spreadProps(__spreadValues({}, p), { name: r[0].trim() })).catch(() => {
+    });
+  }
+  async function personLoeschen(pid) {
+    const p = S.personen[pid];
+    const st = stand(pid);
+    const warn = Math.abs(st.neu) > 4e-3 ? " Achtung: Der Kontostand betr\xE4gt ".concat(money(st.neu), " und geht damit verloren.") : "";
+    const r = await ask({ title: p.name + " entfernen?", text: "Die Person und ihre offenen Buchungen werden gel\xF6scht. Fr\xFChere Abschl\xFCsse bleiben im Verlauf." + warn, ok: "Entfernen", danger: true });
+    if (!r) return;
+    try {
+      await store.del("personen", pid);
+      for (const b of Object.entries(S.buchungen)) if (b[1].personId === pid) await store.del("buchungen", b[0]);
+    } catch (e) {
+    }
+    ui.sel = null;
+    render();
+    toast(p.name + " entfernt");
+  }
+  async function abschliessen() {
+    const cutoff = Date.now();
+    const list = persons().map((p) => {
+      const items = offeneBuchungen(p.id).filter((b) => b.ts <= cutoff);
+      const umsatz = r2(items.reduce((s, b) => s + b.betrag, 0));
+      return { p, items, umsatz, neu: r2((p.saldo || 0) + umsatz) };
+    });
+    const aktiv = list.filter((x) => x.items.length);
+    if (!aktiv.length) {
+      toast("Seit dem letzten Abschluss wurde nichts gebucht.");
+      return;
+    }
+    const r = await ask({ title: "Dienst abschlie\xDFen?", text: "".concat(aktiv.length, " Personen mit Buchungen. Die neuen Kontost\xE4nde werden \xFCbernommen."), ok: "Abschlie\xDFen" });
+    if (!r) return;
+    const $b = $("#doAbschluss");
+    $b.disabled = true;
+    try {
+      await store.set("abschluesse", "a" + cutoff, { ts: cutoff, eintraege: list.map((x) => ({
+        name: x.p.name,
+        gast: !!x.p.gast,
+        alt: x.p.saldo || 0,
+        umsatz: x.umsatz,
+        neu: x.neu,
+        posten: Object.values(x.items.reduce((m, b) => {
+          const k = b.text;
+          m[k] = m[k] || { text: k, n: 0, betrag: 0 };
+          m[k].n++;
+          m[k].betrag = r2(m[k].betrag + b.betrag);
+          return m;
+        }, {}))
+      })) });
+      for (const x of aktiv) {
+        const _a = x.p, { id } = _a, rest = __objRest(_a, ["id"]);
+        await store.set("personen", id, __spreadProps(__spreadValues({}, rest), { saldo: x.neu, bisTs: cutoff }));
+      }
+      for (const x of aktiv) for (const b of x.items) await store.del("buchungen", b.id);
+      toast("Dienst abgeschlossen");
+    } catch (e) {
+      toast("Abschluss unvollst\xE4ndig. Bitte erneut versuchen.");
+    }
+    $b.disabled = false;
+  }
+  async function prodSpeichern(id, patch) {
+    const p = S.produkte[id];
+    if (!p) return;
+    await store.set("produkte", id, __spreadValues(__spreadValues({}, p), patch)).catch(() => {
+    });
+  }
+  async function prodTausch(id, dir) {
+    const list = produkte();
+    const i = list.findIndex((p) => p.id === id);
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    list.forEach((p, k) => p.sort = k);
+    [list[i].sort, list[j].sort] = [list[j].sort, list[i].sort];
+    for (const p of list) {
+      const _a = p, { id: pid } = _a, rest = __objRest(_a, ["id"]);
+      if (S.produkte[pid].sort !== rest.sort) await store.set("produkte", pid, rest).catch(() => {
+      });
+    }
+  }
+  async function produkteAnlegen() {
+    for (let i = 0; i < DEFAULT_PRODUKTE.length; i++) {
+      const [name, preis, variabel] = DEFAULT_PRODUKTE[i];
+      await store.set("produkte", uid(), { name, preis, variabel: !!variabel, sort: i }).catch(() => {
+      });
+    }
+  }
+  function render() {
+    if (!store) return;
+    document.querySelectorAll("nav.tabs button").forEach((b) => {
+      if (b.dataset.tab === ui.tab) b.setAttribute("aria-current", "page");
+      else b.removeAttribute("aria-current");
+    });
+    document.querySelectorAll(".view").forEach((v) => v.hidden = v.id !== "v-" + ui.tab);
+    if (ui.sel && !S.personen[ui.sel]) ui.sel = null;
+    if (ui.tab === "liste") {
+      renderPeople();
+      renderDetail();
+    }
+    if (ui.tab === "abschluss") renderAbschluss();
+    if (ui.tab === "produkte") renderProdukte();
+    if (ui.tab === "besorg") renderBesorg();
+    if (ui.tab === "sicherung") renderSicherung();
+    if (ui.tab === "broetchen") renderBroetchen();
+    backupHinweis();
+  }
+  function lastBackup() {
+    try {
+      return +localStorage.getItem("kk-lastbackup") || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+  function backupHinweis() {
+    const lb = lastBackup();
+    const tage = (Date.now() - lb) / 864e5;
+    const hatDaten = Object.keys(S.abschluesse).length > 0;
+    if (!$("#banner").dataset.fix) $("#banner").innerHTML = hatDaten && tage > 14 && ui.tab !== "sicherung" ? '<div class="banner">'.concat(lb ? "Die letzte Sicherung ist \xFCber zwei Wochen alt." : "Es gibt noch keine Sicherung.", ' <button class="btn small" data-goto="sicherung">Jetzt sichern</button></div>') : "";
+  }
+  let brNamen = false;
+  function broetchenHeute() {
+    const start = /* @__PURE__ */ new Date();
+    start.setHours(0, 0, 0, 0);
+    const prods = produkte().filter((p) => p.broetchen);
+    const rows = prods.map((p) => ({ p, n: 0, wer: {} }));
+    Object.keys(S.buchungen).forEach((id) => {
+      const b = S.buchungen[id];
+      if (b.art !== "verbrauch" || (b.ts || 0) < start.getTime()) return;
+      const r = rows.find((x) => x.p.id === b.produktId);
+      if (!r) return;
+      r.n++;
+      const nm = S.personen[b.personId] ? S.personen[b.personId].name : "?";
+      r.wer[nm] = (r.wer[nm] || 0) + 1;
+    });
+    return rows;
+  }
+  const datumLang = () => (/* @__PURE__ */ new Date()).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  function renderBroetchen() {
+    const rows = broetchenHeute();
+    const gesamt = rows.reduce((s, r) => s + r.n, 0);
+    const preis = r2(rows.reduce((s, r) => s + r.n * (r.p.preis || 0), 0));
+    const wer = (r) => Object.keys(r.wer).sort((a, b) => a.localeCompare(b, "de")).map((n) => r.wer[n] > 1 ? r.wer[n] + "\xD7 " + n : n).join(", ");
+    $("#brTitel").textContent = "Br\xF6tchenliste f\xFCr " + datumLang();
+    $("#brNamen").textContent = brNamen ? "Namen ausblenden" : "Namen anzeigen";
+    $("#brNamen").setAttribute("aria-pressed", String(brNamen));
+    $("#brTeilen").disabled = !gesamt;
+    if (!rows.length) {
+      $("#brListe").innerHTML = '<p class="muted">Kein Produkt ist als Br\xF6tchen markiert. Unter \u201EProdukte\u201C bei den Br\xF6tchensorten \u201EBr\xF6tchen\u201C ankreuzen.</p>';
+      return;
+    }
+    $("#brListe").innerHTML = gesamt ? '<div class="tablewrap"><table class="br-tab"><tbody>'.concat(rows.filter((r) => r.n).map((r) => '\n      <tr><td class="anz num">'.concat(r.n, '</td><td class="nm">').concat(esc(r.p.name)).concat(brNamen ? '<span class="wer">'.concat(esc(wer(r)), "</span>") : "", "</td></tr>")).join(""), '</tbody>\n      <tfoot><tr><td class="num">').concat(gesamt, '</td><td>Br\xF6tchen insgesamt <span class="muted num">(Verkaufswert ').concat(money(preis), ")</span></td></tr></tfoot></table></div>") : '<p class="muted">Heute wurden noch keine Br\xF6tchen gebucht.</p>';
+  }
+  function broetchenText() {
+    const rows = broetchenHeute().filter((r) => r.n);
+    return "Br\xF6tchen f\xFCr " + datumLang() + ":\n" + rows.map((r) => r.n + "\xD7 " + r.p.name).join("\n") + "\n\nInsgesamt: " + rows.reduce((s, r) => s + r.n, 0) + " Br\xF6tchen";
+  }
+  function renderSicherung() {
+    const lb = lastBackup();
+    $("#lastBackup").textContent = lb ? "Letzte Sicherung: " + new Date(lb).toLocaleString("de-DE") : "Noch keine Sicherung gespeichert.";
+    renderTagesstaende();
+  }
+  const TSKEY = "kk-tagesstaende", TS_MAX = 60, TS_STUNDE = 23;
+  const tagKey = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  function tsLaden() {
+    try {
+      return JSON.parse(localStorage.getItem(TSKEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function tsSpeichern(list) {
+    while (list.length) {
+      try {
+        localStorage.setItem(TSKEY, JSON.stringify(list));
+        return true;
+      } catch (e) {
+        if (list.length <= 1) return false;
+        list.splice(0, 1);
+      }
+    }
+    return false;
+  }
+  function tagesBestellungen(von, bis) {
+    const m = {};
+    const add = (name, text, n) => {
+      m[name] = m[name] || {};
+      m[name][text] = (m[name][text] || 0) + n;
+    };
+    Object.keys(S.buchungen).forEach((id) => {
+      const b = S.buchungen[id];
+      if (b.art !== "verbrauch" || b.ts < von || b.ts >= bis) return;
+      add(S.personen[b.personId] ? S.personen[b.personId].name : "?", b.text, 1);
+    });
+    Object.keys(S.abschluesse).forEach((id) => {
+      const a = S.abschluesse[id];
+      if (a.ts < von || a.ts >= bis) return;
+      (a.eintraege || []).forEach((e) => (e.posten || []).forEach((x) => {
+        if (x.betrag < 0 && x.text !== "Korrektur") add(e.name, x.text, x.n);
+      }));
+    });
+    return m;
+  }
+  function tsErstellen(tag, grund) {
+    const d = /* @__PURE__ */ new Date(tag + "T00:00:00");
+    const von = d.getTime();
+    d.setDate(d.getDate() + 1);
+    const best = tagesBestellungen(von, d.getTime());
+    const uebersicht = persons().map((p) => {
+      const b = best[p.name] || {};
+      return {
+        name: p.name,
+        gast: !!p.gast,
+        stand: stand(p.id).neu,
+        bestellt: Object.keys(b).map((t) => b[t] > 1 ? b[t] + "\xD7 " + t : t).join(", ")
+      };
+    });
+    const kopie = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste }));
+    const list = tsLaden().filter((x) => !(x.tag === tag && x.grund !== "vorher"));
+    list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie });
+    list.sort((a, b) => a.ts - b.ts);
+    while (list.length > TS_MAX) list.shift();
+    return tsSpeichern(list);
+  }
+  function tsPruefen() {
+    const jetzt = /* @__PURE__ */ new Date();
+    const heute2 = tagKey(jetzt);
+    const gestern = (() => {
+      const g = new Date(jetzt);
+      g.setDate(g.getDate() - 1);
+      return tagKey(g);
+    })();
+    const faellig = jetzt.getHours() >= TS_STUNDE ? heute2 : gestern;
+    const hat = tsLaden().some((x) => x.tag === faellig && x.grund !== "vorher");
+    if (hat) return;
+    if (!Object.keys(S.personen).length) return;
+    const puenktlich = faellig === heute2;
+    tsErstellen(faellig, puenktlich ? "auto" : "nachgeholt");
+    if (ui.tab === "sicherung") renderTagesstaende();
+  }
+  function renderTagesstaende() {
+    const list = tsLaden().slice().reverse();
+    const dLang = (t) => (/* @__PURE__ */ new Date(t + "T12:00:00")).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const uhr = (ts) => new Date(ts).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    const gr = (x) => x.grund === "nachgeholt" ? "nachgeholt am ".concat(new Date(x.ts).toLocaleDateString("de-DE"), " um ").concat(uhr(x.ts)) : x.grund === "vorher" ? "Stand vor einer Wiederherstellung, ".concat(new Date(x.ts).toLocaleDateString("de-DE"), " ").concat(uhr(x.ts)) : "gespeichert um ".concat(uhr(x.ts));
+    $("#tsListe").innerHTML = list.length ? list.map((x) => {
+      const best = x.uebersicht.filter((u) => u.bestellt);
+      return '<details class="hist"><summary>'.concat(esc(dLang(x.tag)), ' <span class="ts-grund">(').concat(esc(gr(x)), ')</span></summary>\n      <div class="tablewrap"><table class="ts-tab"><thead><tr><th>Name</th><th class="r">Kontostand</th><th>Bestellungen an diesem Tag</th></tr></thead>\n      <tbody>').concat(x.uebersicht.map((u) => "<tr><td>".concat(esc(u.name)).concat(u.gast ? ' <span class="muted">(Gast)</span>' : "", '</td>\n        <td class="r num ').concat(cls(u.stand), '">').concat(money(u.stand), '</td><td class="best">').concat(esc(u.bestellt || "\u2013"), "</td></tr>")).join(""), '</tbody></table></div>\n      <p class="muted">').concat(best.length, ' Personen haben an diesem Tag etwas bestellt.</p>\n      <div class="actions"><button class="btn" data-tsrestore="').concat(esc(x.id), '">Diesen Stand wiederherstellen</button></div>\n    </details>');
+    }).join("") : '<p class="muted">Noch kein Tagesstand gespeichert. Der erste entsteht heute um 23 Uhr.</p>';
+  }
+  async function tsWiederherstellen(id) {
+    const x = tsLaden().find((t) => t.id === id);
+    if (!x) return;
+    const r = await ask({
+      title: "Stand wiederherstellen?",
+      danger: true,
+      ok: "Wiederherstellen",
+      text: "Alle Kontost\xE4nde und Buchungen werden auf den Stand vom " + new Date(x.ts).toLocaleString("de-DE") + " zur\xFCckgesetzt. Alles, was danach gebucht wurde, geht verloren. Der aktuelle Stand wird vorher als eigener Eintrag gesichert, du kannst also zur\xFCck."
+    });
+    if (!r) return;
+    tsErstellen(tagKey(/* @__PURE__ */ new Date()), "vorher");
+    S.personen = x.daten.personen || {};
+    S.produkte = x.daten.produkte || {};
+    S.buchungen = x.daten.buchungen || {};
+    S.liste = x.daten.liste || {};
+    Object.keys(S.abschluesse).forEach((k) => {
+      if (S.abschluesse[k].ts > x.ts) delete S.abschluesse[k];
+    });
+    store.save();
+    ui.sel = null;
+    render();
+    toast("Stand wiederhergestellt.");
+  }
+  function datei(name, text, typ) {
+    const blob = new Blob([text], { type: typ });
+    if (window.navigator && navigator.msSaveBlob) {
+      navigator.msSaveBlob(blob, name);
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1e3);
+  }
+  async function sichern(name, text, typ) {
+    try {
+      const file = typeof File === "function" ? new File([text], name, { type: typ }) : null;
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+        return true;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return false;
+    }
+    datei(name, text, typ);
+    return true;
+  }
+  const heute = () => {
+    const d = /* @__PURE__ */ new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+  function renderPeople() {
+    const f = ui.filter.trim().toLowerCase();
+    const ps = persons().filter((p) => !f || (p.name || "").toLowerCase().includes(f));
+    $("#split").classList.toggle("has-sel", !!ui.sel);
+    if (!Object.keys(S.personen).length) {
+      $("#plist").innerHTML = '<li class="muted" style="padding:16px">Noch niemand auf der Liste. \xDCber \u201E+ Person\u201C hinzuf\xFCgen oder im Bereich \u201ESicherung\u201C die Startdaten laden.</li>';
+      return;
+    }
+    const row = (p) => {
+      const st = stand(p.id);
+      const heute2 = st.items.length ? '<span class="ptoday num">offen '.concat(money(st.umsatz), "</span>") : "";
+      return '<li><button data-pid="'.concat(esc(p.id), '" aria-current="').concat(p.id === ui.sel, '">\n      <span class="pname">').concat(esc(p.name), "</span>").concat(heute2, '\n      <span class="psaldo num ').concat(cls(st.neu), '">').concat(money(st.neu), "</span></button></li>");
+    };
+    const stamm = ps.filter((p) => !p.gast), gaeste = ps.filter((p) => p.gast);
+    if (!ps.length) {
+      $("#plist").innerHTML = '<li class="muted" style="padding:16px">Kein Name passt zu \u201E'.concat(esc(ui.filter), "\u201C.</li>");
+      return;
+    }
+    $("#plist").innerHTML = (stamm.length ? '<li class="grp">Stammbesatzung</li>' + stamm.map(row).join("") : "") + '<li class="grp">G\xE4ste <button class="btn small" data-addgast>+ Gast</button></li>' + (gaeste.length ? gaeste.map(row).join("") : '<li class="muted" style="padding:10px 14px">Keine G\xE4ste eingetragen.</li>');
+  }
+  function renderDetail() {
+    const el = $("#detail");
+    if (!ui.sel) {
+      el.innerHTML = '<div class="empty">Person links antippen, um zu buchen.</div>';
+      return;
+    }
+    const p = S.personen[ui.sel];
+    const st = stand(ui.sel);
+    const prods = produkte();
+    const counts = {};
+    st.items.forEach((b) => {
+      if (b.produktId) counts[b.produktId] = (counts[b.produktId] || 0) + 1;
+    });
+    const grouped = Object.values(st.items.reduce((m, b) => {
+      const k = b.art === "verbrauch" ? (b.produktId || "") + "|" + b.text : b.id;
+      m[k] = m[k] || { text: b.text, n: 0, betrag: 0, ids: [], art: b.art };
+      m[k].n++;
+      m[k].betrag = r2(m[k].betrag + b.betrag);
+      m[k].ids.push(b.id);
+      return m;
+    }, {}));
+    el.innerHTML = '\n    <div class="phead">\n      <button class="btn small back" data-act="back">\u2039 Liste</button>\n      <h2>'.concat(esc(p.name)).concat(p.gast ? '<span class="gastbadge">Gast</span>' : "", '</h2>\n      <div class="saldo">\n        <div class="big num ').concat(cls(st.neu), '">').concat(money(st.neu), '</div>\n        <div class="lbl">').concat(st.neu < -4e-3 ? "Schulden" : st.neu > 4e-3 ? "Guthaben" : "ausgeglichen").concat(st.items.length ? ", \xDCbertrag ".concat(money(st.alt)) : "", "</div>\n      </div>\n    </div>\n    ").concat(prods.length ? '<div class="prod-grid">'.concat(prods.map((pr) => '\n      <button class="prod" data-id="'.concat(esc(pr.id), '">\n        ').concat(counts[pr.id] ? '<span class="cnt">'.concat(tally(counts[pr.id]), "</span>") : "", '\n        <span class="pn">').concat(esc(pr.name), '</span>\n        <span class="pp num">').concat(pr.variabel ? pr.preis ? "ca. " + money(pr.preis) : "Betrag eingeben" : money(pr.preis || 0), "</span>\n      </button>")).join(""), "</div>") : '<p class="muted">Noch keine Produkte. <button class="btn small" data-act="toProd">Produkte anlegen</button></p>', "\n    <h3>Seit dem letzten Abschluss</h3>\n    ").concat(grouped.length ? '<ul class="today">'.concat(grouped.map((g) => "\n      <li><span>".concat(esc(g.text), '</span>\n        <span class="tl">').concat(g.art === "verbrauch" ? tally(g.n) : "", '</span>\n        <span class="num ').concat(cls(g.betrag), '">').concat(money(g.betrag), '</span>\n        <button class="btn small" data-rm="').concat(esc(g.ids[g.ids.length - 1]), '" aria-label="Einmal ').concat(esc(g.text), ' entfernen">\u22121</button></li>')).join(""), '\n      <li><span class="sum">Summe</span><span></span><span class="num sum ').concat(cls(st.umsatz), '">').concat(money(st.umsatz), "</span><span></span></li></ul>") : '<p class="muted">Noch nichts gebucht.</p>', '\n    <div class="actions">\n      <button class="btn" data-act="einzahlen">Einzahlung</button>\n      <button class="btn" data-act="korrektur">Kontostand korrigieren</button>\n      <button class="btn" data-act="rename">Umbenennen</button>\n      <button class="btn" data-act="gruppe">').concat(p.gast ? "Zur Stammbesatzung verschieben" : "Zu den G\xE4sten verschieben", '</button>\n      <button class="btn danger" data-act="delete">Entfernen</button>\n    </div>');
+  }
+  function renderAbschluss() {
+    const rows = persons().map((p) => ({ p, st: stand(p.id) }));
+    const aktiv = rows.filter((x) => x.st.items.length).length;
+    $("#doAbschluss").disabled = !aktiv;
+    $("#abPreview").innerHTML = rows.length ? '<table>\n    <thead><tr><th>Name</th><th class="r">\xDCbertrag</th><th class="r">Seit Abschluss</th><th class="r">Neuer Stand</th></tr></thead>\n    <tbody>'.concat(rows.map(({ p, st }) => '<tr class="'.concat(st.items.length ? "active" : "", '">\n      <td>').concat(esc(p.name)).concat(p.gast ? ' <span class="muted">(Gast)</span>' : "", '</td><td class="r num ').concat(cls(st.alt), '">').concat(money(st.alt), '</td>\n      <td class="r num">').concat(st.items.length ? money(st.umsatz) : "\u2013", '</td>\n      <td class="r num ').concat(cls(st.neu), '"><strong>').concat(money(st.neu), "</strong></td></tr>")).join(""), "</tbody></table>") : '<p class="muted">Noch niemand auf der Liste.</p>';
+    const hist = Object.values(S.abschluesse).sort((a, b) => b.ts - a.ts);
+    const dt = new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    $("#abHist").innerHTML = hist.length ? hist.map((h) => {
+      const akt = (h.eintraege || []).filter((e) => e.posten && e.posten.length);
+      const sum = r2(akt.reduce((s, e) => s + e.umsatz, 0));
+      return '<details class="hist"><summary>'.concat(esc(dt.format(new Date(h.ts))), ' <span class="muted">(').concat(akt.length, " Personen, ").concat(money(sum), ')</span></summary>\n      <div class="tablewrap"><table><thead><tr><th>Name</th><th>Posten</th><th class="r">\xDCbertrag</th><th class="r">Umsatz</th><th class="r">Neu</th></tr></thead>\n      <tbody>').concat(akt.map((e) => "<tr><td>".concat(esc(e.name)).concat(e.gast ? ' <span class="muted">(Gast)</span>' : "", "</td><td>").concat(e.posten.map((x) => esc(x.n > 1 ? x.n + "\xD7 " + x.text : x.text)).join(", "), '</td>\n        <td class="r num">').concat(money(e.alt), '</td><td class="r num">').concat(money(e.umsatz), '</td><td class="r num ').concat(cls(e.neu), '">').concat(money(e.neu), "</td></tr>")).join(""), "</tbody></table></div></details>");
+    }).join("") : '<p class="muted">Noch kein Dienst abgeschlossen.</p>';
+  }
+  function renderProdukte() {
+    const list = produkte();
+    $("#seedProd").hidden = list.length > 0;
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#prodList")) return;
+    $("#prodList").innerHTML = list.length ? list.map((p, i) => '\n    <div class="prow" data-pid="'.concat(esc(p.id), '">\n      <input type="text" data-f="name" value="').concat(esc(p.name), '" aria-label="Produktname">\n      <input data-f="preis" inputmode="decimal" value="').concat(esc(String(p.preis || 0).replace(".", ",")), '" aria-label="Preis in Euro">\n      <label><input type="checkbox" data-f="variabel" ').concat(p.variabel ? "checked" : "", '> Preis abfragen</label>\n      <label><input type="checkbox" data-f="broetchen" ').concat(p.broetchen ? "checked" : "", '> Br\xF6tchen</label>\n      <span class="ord">\n        <button class="btn small" data-mv="-1" ').concat(i === 0 ? "disabled" : "", ' aria-label="Nach oben">\u2191</button>\n        <button class="btn small" data-mv="1" ').concat(i === list.length - 1 ? "disabled" : "", ' aria-label="Nach unten">\u2193</button>\n        <button class="btn small danger" data-pdel aria-label="L\xF6schen">\u2715</button>\n      </span>\n    </div>')).join("") : '<p class="muted">Noch keine Produkte angelegt.</p>';
+  }
+  function renderBesorg() {
+    const items = Object.entries(S.liste).map(([id, x]) => __spreadValues({ id }, x)).sort((a, b) => a.ts - b.ts);
+    $("#besorgList").innerHTML = items.length ? items.map((x) => "<li><span>".concat(esc(x.text), '</span><button class="btn small" data-bdel="').concat(esc(x.id), '">Erledigt</button></li>')).join("") : '<li class="muted">Nichts zu besorgen.</li>';
+  }
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => {
+    ui.tab = b.dataset.tab;
+    render();
+    window.scrollTo(0, 0);
+  }));
+  $("#filter").addEventListener("input", (e) => {
+    ui.filter = e.target.value;
+    renderPeople();
+  });
+  $("#addPerson").addEventListener("click", () => personNeu(false));
+  $("#plist").addEventListener("click", (e) => {
+    if (e.target.closest("[data-addgast]")) {
+      personNeu(true);
+      return;
+    }
+    const b = e.target.closest("button[data-pid]");
+    if (!b) return;
+    ui.sel = b.dataset.pid;
+    render();
+    if (innerWidth <= 760) window.scrollTo(0, 0);
+  });
+  $("#detail").addEventListener("click", (e) => {
+    var _a;
+    const pid = ui.sel;
+    if (!pid) return;
+    const prod = e.target.closest(".prod");
+    if (prod) {
+      const p = S.produkte[prod.dataset.id];
+      if (p) buchen(pid, __spreadValues({ id: prod.dataset.id }, p));
+      return;
+    }
+    const rm = e.target.closest("[data-rm]");
+    if (rm) {
+      const id = rm.dataset.rm;
+      const b = S.buchungen[id];
+      store.del("buchungen", id).then(() => toast("".concat((b == null ? void 0 : b.text) || "Buchung", " entfernt"), () => b && store.set("buchungen", id, b).catch(() => {
+      }))).catch(() => {
+      });
+      return;
+    }
+    const act = (_a = e.target.closest("[data-act]")) == null ? void 0 : _a.dataset.act;
+    if (act === "back") {
+      ui.sel = null;
+      render();
+    }
+    if (act === "einzahlen") einzahlen(pid);
+    if (act === "korrektur") korrigieren(pid);
+    if (act === "rename") personUmbenennen(pid);
+    if (act === "gruppe") {
+      const p = S.personen[pid];
+      store.set("personen", pid, Object.assign({}, p, { gast: !p.gast })).then(() => toast(p.name + (p.gast ? " ist jetzt in der Stammbesatzung" : " ist jetzt Gast")));
+    }
+    if (act === "delete") personLoeschen(pid);
+    if (act === "toProd") {
+      ui.tab = "produkte";
+      render();
+    }
+  });
+  $("#doAbschluss").addEventListener("click", abschliessen);
+  $("#addProd").addEventListener("click", async () => {
+    const r = await ask({ title: "Produkt hinzuf\xFCgen", fields: [{ label: "Name" }, { label: "Preis in \u20AC", money: true, value: "0,00" }], ok: "Hinzuf\xFCgen" });
+    if (!r || !r[0].trim()) return;
+    const preis = parseMoney(r[1]);
+    await store.set("produkte", uid(), { name: r[0].trim(), preis: isNaN(preis) ? 0 : preis, variabel: false, sort: produkte().length }).catch(() => {
+    });
+    renderProdukte();
+  });
+  $("#seedProd").addEventListener("click", produkteAnlegen);
+  $("#prodList").addEventListener("change", (e) => {
+    const row = e.target.closest(".prow");
+    if (!row) return;
+    const id = row.dataset.pid;
+    const f = e.target.dataset.f;
+    if (f === "name") {
+      const v = e.target.value.trim();
+      if (v) prodSpeichern(id, { name: v });
+    }
+    if (f === "preis") {
+      const v = parseMoney(e.target.value);
+      if (!isNaN(v) && v >= 0) prodSpeichern(id, { preis: v });
+      else toast("Bitte einen g\xFCltigen Preis eingeben.");
+    }
+    if (f === "variabel") prodSpeichern(id, { variabel: e.target.checked });
+    if (f === "broetchen") prodSpeichern(id, { broetchen: e.target.checked });
+  });
+  $("#prodList").addEventListener("focusout", () => setTimeout(() => {
+    if (!document.activeElement || !document.activeElement.closest("#prodList")) renderProdukte();
+  }, 0));
+  $("#prodList").addEventListener("click", async (e) => {
+    const row = e.target.closest(".prow");
+    if (!row) return;
+    const id = row.dataset.pid;
+    const mv = e.target.closest("[data-mv]");
+    if (mv) {
+      e.target.blur();
+      await prodTausch(id, +mv.dataset.mv);
+      renderProdukte();
+      return;
+    }
+    if (e.target.closest("[data-pdel]")) {
+      const p = S.produkte[id];
+      const r = await ask({ title: p.name + " l\xF6schen?", text: "Bereits gebuchte Posten bleiben erhalten.", ok: "L\xF6schen", danger: true });
+      if (r) {
+        await store.del("produkte", id).catch(() => {
+        });
+        renderProdukte();
+      }
+    }
+  });
+  const besorgAdd = async () => {
+    const v = $("#besorgIn").value.trim();
+    if (!v) return;
+    $("#besorgIn").value = "";
+    await store.set("liste", uid(), { text: v, ts: Date.now() }).catch(() => {
+    });
+  };
+  $("#besorgAdd").addEventListener("click", besorgAdd);
+  $("#besorgIn").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") besorgAdd();
+  });
+  $("#besorgList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-bdel]");
+    if (b) store.del("liste", b.dataset.bdel).catch(() => {
+    });
+  });
+  $("#banner").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-goto]");
+    if (b) {
+      ui.tab = b.dataset.goto;
+      render();
+    }
+  });
+  $("#backupSave").addEventListener("click", async () => {
+    const ok = await sichern("kaffeekasse-sicherung-" + heute() + ".json", JSON.stringify({ app: "kaffeekasse", version: 1, ts: Date.now(), daten: S }), "application/json");
+    if (!ok) return;
+    try {
+      localStorage.setItem("kk-lastbackup", String(Date.now()));
+    } catch (e) {
+    }
+    render();
+    toast("Sicherung erstellt.");
+  });
+  $("#csvSave").addEventListener("click", () => {
+    const rows = [["Name", "Gruppe", "\xDCbertrag", "Seit Abschluss", "Kontostand"]].concat(persons().map((p) => {
+      const st = stand(p.id);
+      return [p.name, p.gast ? "Gast" : "Stammbesatzung", st.alt, st.umsatz, st.neu].map((v) => typeof v === "number" ? v.toFixed(2).replace(".", ",") : v);
+    }));
+    sichern("kontostaende-" + heute() + ".csv", "\uFEFF" + rows.map((r) => r.map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(";")).join("\r\n"), "text/csv");
+  });
+  $("#backupLoad").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = async () => {
+      let o;
+      try {
+        o = JSON.parse(rd.result);
+      } catch (err) {
+        toast("Die Datei ist keine g\xFCltige Sicherung.");
+        return;
+      }
+      if (!o || o.app !== "kaffeekasse" || !o.daten) {
+        toast("Die Datei ist keine Kaffeekassen-Sicherung.");
+        return;
+      }
+      const r = await ask({ title: "Sicherung laden?", text: "Alle aktuellen Daten auf diesem Tablet werden durch die Sicherung vom " + new Date(o.ts).toLocaleString("de-DE") + " ersetzt.", ok: "Ersetzen", danger: true });
+      if (!r) return;
+      COLLS.forEach((c) => {
+        S[c] = o.daten[c] || {};
+      });
+      store.save();
+      migBroetchen();
+      ui.sel = null;
+      render();
+      toast("Sicherung geladen.");
+    };
+    rd.readAsText(f);
+    e.target.value = "";
+  });
+  $("#tsListe").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tsrestore]");
+    if (b) tsWiederherstellen(b.dataset.tsrestore);
+  });
+  setInterval(tsPruefen, 6e4);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) tsPruefen();
+  });
+  $("#brNamen").addEventListener("click", () => {
+    brNamen = !brNamen;
+    renderBroetchen();
+  });
+  $("#brTeilen").addEventListener("click", async () => {
+    const text = broetchenText();
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Liste kopiert. Jetzt z. B. in WhatsApp einf\xFCgen.");
+    } catch (e) {
+      toast("Senden wird von diesem Ger\xE4t nicht unterst\xFCtzt.");
+    }
+  });
+  $("#fullscreen").addEventListener("click", () => {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (isFs) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else if (req) {
+      req.call(el);
+    }
+  });
+  if (navigator.standalone || window.matchMedia && matchMedia("(display-mode: standalone)").matches) $("#fullscreen").hidden = true;
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(() => {
+      });
+    });
+  }
+  init();
+  tsPruefen();
+})();
+</script>
+</body>
+</html>
