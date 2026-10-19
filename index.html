@@ -133,11 +133,15 @@ td.r,th.r{ text-align:right; }
 tbody tr:nth-child(even){ background:var(--row); }
 tr.active td:first-child{ border-left:4px solid var(--ink); }
 
-.prow{ display:grid; grid-template-columns:1fr 110px auto auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.prow{ display:grid; grid-template-columns:1fr 110px auto auto auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
 .prow input[type=text], .prow input[inputmode]{ padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); min-width:0; }
 .prow label{ font-size:.85rem; color:var(--muted); display:flex; gap:6px; align-items:center; white-space:nowrap; }
 .prow .ord{ display:flex; gap:4px; }
 
+.br-tab td.anz{ font-size:2rem; font-weight:700; color:var(--ink); width:1%; white-space:nowrap; padding-right:18px; }
+.br-tab td.nm{ font-size:1.3rem; font-weight:700; }
+.br-tab td .wer{ display:block; font-size:.9rem; font-weight:400; color:var(--muted); }
+.br-tab tfoot td{ font-weight:700; border-bottom:0; }
 .hist summary{ cursor:pointer; padding:10px 0; border-bottom:1px solid var(--line); }
 .besorg{ list-style:none; margin:0; padding:0; }
 .besorg li{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
@@ -185,6 +189,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   <h1>Kaffeekasse <span>Wache</span></h1>
   <nav class="tabs" aria-label="Bereiche">
     <button data-tab="liste" aria-current="page">Liste</button>
+    <button data-tab="broetchen">Brötchen</button>
     <button data-tab="abschluss">Dienst abschließen</button>
     <button data-tab="produkte">Produkte</button>
     <button data-tab="besorg">Besorg mal</button>
@@ -206,6 +211,18 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
         <ul id="plist"></ul>
       </aside>
       <section class="detail" id="detail" aria-live="polite"></section>
+    </div>
+  </section>
+
+  <section class="view" id="v-broetchen" hidden>
+    <div class="card">
+      <h2 id="brTitel">Brötchenliste</h2>
+      <p class="muted">Alle Brötchen, die heute seit 0 Uhr gebucht wurden. Welche Produkte als Brötchen zählen, stellst du unter „Produkte“ ein.</p>
+      <div id="brListe"></div>
+      <div class="actions">
+        <button class="btn primary" id="brTeilen">Liste senden</button>
+        <button class="btn" id="brNamen" aria-pressed="false">Namen anzeigen</button>
+      </div>
     </div>
   </section>
 
@@ -334,6 +351,7 @@ var __objRest = (source, exclude) => {
     ["Sonstiges", 0, true]
   ];
   const DEFAULT_PERSONEN = [];
+  const BROETCHEN = ["Normales", "Sunny", "K\xF6rner", "Roggen", "Dinkel"];
   const $ = (s) => document.querySelector(s);
   const fmt = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
   const money = (v) => fmt.format(Math.round(v * 100) / 100).replace("-", "\u2212");
@@ -377,7 +395,7 @@ var __objRest = (source, exclude) => {
   }
   function seed() {
     DEFAULT_PRODUKTE.forEach((p, i) => {
-      S.produkte["pr" + (i + 1)] = { name: p[0], preis: p[1], variabel: !!p[2], sort: i };
+      S.produkte["pr" + (i + 1)] = { name: p[0], preis: p[1], variabel: !!p[2], sort: i, broetchen: BROETCHEN.indexOf(p[0]) >= 0 };
     });
     DEFAULT_PERSONEN.forEach((p, i) => {
       S.personen["ma" + (i + 1)] = { name: p[0], saldo: p[1], bisTs: 0, gast: !!p[2] };
@@ -401,12 +419,21 @@ var __objRest = (source, exclude) => {
       }
     } catch (e) {
     }
+    migBroetchen();
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
     } catch (e) {
     }
     if (!storageOk()) banner("Dieser Browser kann hier nichts dauerhaft speichern. Bitte die Datei in einem anderen Browser oder in einer Kiosk-App \xF6ffnen.");
     render();
+  }
+  function migBroetchen() {
+    const ids = Object.keys(S.produkte);
+    if (!ids.length || ids.some((id) => S.produkte[id].broetchen !== void 0)) return;
+    ids.forEach((id) => {
+      S.produkte[id].broetchen = BROETCHEN.indexOf(S.produkte[id].name) >= 0;
+    });
+    store.save();
   }
   function storageOk() {
     try {
@@ -721,6 +748,7 @@ var __objRest = (source, exclude) => {
     if (ui.tab === "produkte") renderProdukte();
     if (ui.tab === "besorg") renderBesorg();
     if (ui.tab === "sicherung") renderSicherung();
+    if (ui.tab === "broetchen") renderBroetchen();
     backupHinweis();
   }
   function lastBackup() {
@@ -735,6 +763,43 @@ var __objRest = (source, exclude) => {
     const tage = (Date.now() - lb) / 864e5;
     const hatDaten = Object.keys(S.abschluesse).length > 0;
     if (!$("#banner").dataset.fix) $("#banner").innerHTML = hatDaten && tage > 14 && ui.tab !== "sicherung" ? '<div class="banner">'.concat(lb ? "Die letzte Sicherung ist \xFCber zwei Wochen alt." : "Es gibt noch keine Sicherung.", ' <button class="btn small" data-goto="sicherung">Jetzt sichern</button></div>') : "";
+  }
+  let brNamen = false;
+  function broetchenHeute() {
+    const start = /* @__PURE__ */ new Date();
+    start.setHours(0, 0, 0, 0);
+    const prods = produkte().filter((p) => p.broetchen);
+    const rows = prods.map((p) => ({ p, n: 0, wer: {} }));
+    Object.keys(S.buchungen).forEach((id) => {
+      const b = S.buchungen[id];
+      if (b.art !== "verbrauch" || (b.ts || 0) < start.getTime()) return;
+      const r = rows.find((x) => x.p.id === b.produktId);
+      if (!r) return;
+      r.n++;
+      const nm = S.personen[b.personId] ? S.personen[b.personId].name : "?";
+      r.wer[nm] = (r.wer[nm] || 0) + 1;
+    });
+    return rows;
+  }
+  const datumLang = () => (/* @__PURE__ */ new Date()).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" });
+  function renderBroetchen() {
+    const rows = broetchenHeute();
+    const gesamt = rows.reduce((s, r) => s + r.n, 0);
+    const preis = r2(rows.reduce((s, r) => s + r.n * (r.p.preis || 0), 0));
+    const wer = (r) => Object.keys(r.wer).sort((a, b) => a.localeCompare(b, "de")).map((n) => r.wer[n] > 1 ? r.wer[n] + "\xD7 " + n : n).join(", ");
+    $("#brTitel").textContent = "Br\xF6tchenliste f\xFCr " + datumLang();
+    $("#brNamen").textContent = brNamen ? "Namen ausblenden" : "Namen anzeigen";
+    $("#brNamen").setAttribute("aria-pressed", String(brNamen));
+    $("#brTeilen").disabled = !gesamt;
+    if (!rows.length) {
+      $("#brListe").innerHTML = '<p class="muted">Kein Produkt ist als Br\xF6tchen markiert. Unter \u201EProdukte\u201C bei den Br\xF6tchensorten \u201EBr\xF6tchen\u201C ankreuzen.</p>';
+      return;
+    }
+    $("#brListe").innerHTML = gesamt ? '<div class="tablewrap"><table class="br-tab"><tbody>'.concat(rows.filter((r) => r.n).map((r) => '\n      <tr><td class="anz num">'.concat(r.n, '</td><td class="nm">').concat(esc(r.p.name)).concat(brNamen ? '<span class="wer">'.concat(esc(wer(r)), "</span>") : "", "</td></tr>")).join(""), '</tbody>\n      <tfoot><tr><td class="num">').concat(gesamt, '</td><td>Br\xF6tchen insgesamt <span class="muted num">(Verkaufswert ').concat(money(preis), ")</span></td></tr></tfoot></table></div>") : '<p class="muted">Heute wurden noch keine Br\xF6tchen gebucht.</p>';
+  }
+  function broetchenText() {
+    const rows = broetchenHeute().filter((r) => r.n);
+    return "Br\xF6tchen f\xFCr " + datumLang() + ":\n" + rows.map((r) => r.n + "\xD7 " + r.p.name).join("\n") + "\n\nInsgesamt: " + rows.reduce((s, r) => s + r.n, 0) + " Br\xF6tchen";
   }
   function renderSicherung() {
     const lb = lastBackup();
@@ -833,7 +898,7 @@ var __objRest = (source, exclude) => {
     const list = produkte();
     $("#seedProd").hidden = list.length > 0;
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#prodList")) return;
-    $("#prodList").innerHTML = list.length ? list.map((p, i) => '\n    <div class="prow" data-pid="'.concat(esc(p.id), '">\n      <input type="text" data-f="name" value="').concat(esc(p.name), '" aria-label="Produktname">\n      <input data-f="preis" inputmode="decimal" value="').concat(esc(String(p.preis || 0).replace(".", ",")), '" aria-label="Preis in Euro">\n      <label><input type="checkbox" data-f="variabel" ').concat(p.variabel ? "checked" : "", '> Preis abfragen</label>\n      <span class="ord">\n        <button class="btn small" data-mv="-1" ').concat(i === 0 ? "disabled" : "", ' aria-label="Nach oben">\u2191</button>\n        <button class="btn small" data-mv="1" ').concat(i === list.length - 1 ? "disabled" : "", ' aria-label="Nach unten">\u2193</button>\n        <button class="btn small danger" data-pdel aria-label="L\xF6schen">\u2715</button>\n      </span>\n    </div>')).join("") : '<p class="muted">Noch keine Produkte angelegt.</p>';
+    $("#prodList").innerHTML = list.length ? list.map((p, i) => '\n    <div class="prow" data-pid="'.concat(esc(p.id), '">\n      <input type="text" data-f="name" value="').concat(esc(p.name), '" aria-label="Produktname">\n      <input data-f="preis" inputmode="decimal" value="').concat(esc(String(p.preis || 0).replace(".", ",")), '" aria-label="Preis in Euro">\n      <label><input type="checkbox" data-f="variabel" ').concat(p.variabel ? "checked" : "", '> Preis abfragen</label>\n      <label><input type="checkbox" data-f="broetchen" ').concat(p.broetchen ? "checked" : "", '> Br\xF6tchen</label>\n      <span class="ord">\n        <button class="btn small" data-mv="-1" ').concat(i === 0 ? "disabled" : "", ' aria-label="Nach oben">\u2191</button>\n        <button class="btn small" data-mv="1" ').concat(i === list.length - 1 ? "disabled" : "", ' aria-label="Nach unten">\u2193</button>\n        <button class="btn small danger" data-pdel aria-label="L\xF6schen">\u2715</button>\n      </span>\n    </div>')).join("") : '<p class="muted">Noch keine Produkte angelegt.</p>';
   }
   function renderBesorg() {
     const items = Object.entries(S.liste).map(([id, x]) => __spreadValues({ id }, x)).sort((a, b) => a.ts - b.ts);
@@ -922,6 +987,7 @@ var __objRest = (source, exclude) => {
       else toast("Bitte einen g\xFCltigen Preis eingeben.");
     }
     if (f === "variabel") prodSpeichern(id, { variabel: e.target.checked });
+    if (f === "broetchen") prodSpeichern(id, { broetchen: e.target.checked });
   });
   $("#prodList").addEventListener("focusout", () => setTimeout(() => {
     if (!document.activeElement || !document.activeElement.closest("#prodList")) renderProdukte();
@@ -1009,12 +1075,34 @@ var __objRest = (source, exclude) => {
         S[c] = o.daten[c] || {};
       });
       store.save();
+      migBroetchen();
       ui.sel = null;
       render();
       toast("Sicherung geladen.");
     };
     rd.readAsText(f);
     e.target.value = "";
+  });
+  $("#brNamen").addEventListener("click", () => {
+    brNamen = !brNamen;
+    renderBroetchen();
+  });
+  $("#brTeilen").addEventListener("click", async () => {
+    const text = broetchenText();
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Liste kopiert. Jetzt z. B. in WhatsApp einf\xFCgen.");
+    } catch (e) {
+      toast("Senden wird von diesem Ger\xE4t nicht unterst\xFCtzt.");
+    }
   });
   $("#fullscreen").addEventListener("click", () => {
     const el = document.documentElement;
