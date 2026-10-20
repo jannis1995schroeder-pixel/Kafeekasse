@@ -218,14 +218,20 @@ dialog p{ margin:0 0 12px; color:var(--muted); }
 dialog label{ display:block; font-weight:700; margin:10px 0 4px; }
 dialog input{ width:100%; padding:10px; border:1px solid var(--line); border-radius:6px; background:var(--paper); font-size:1.1rem; }
 dialog .hint{ font-size:.85rem; color:var(--muted); margin-top:4px; }
+dialog .schnell{ display:block; width:100%; margin-top:8px; border-color:var(--credit); color:var(--credit); font-weight:700; }
 dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
 
 #toast{
   position:fixed; left:50%; transform:translateX(-50%);
-  bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:20;
-  background:var(--text); color:var(--paper); border-radius:8px; padding:10px 12px 10px 16px;
-  display:flex; align-items:center; gap:14px; max-width:92vw; box-shadow:0 4px 16px rgba(0,0,0,.25);
+  bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:40;
+  background:var(--text); color:var(--paper); border-radius:10px; padding:12px 12px 14px 18px;
+  display:flex; align-items:center; gap:16px; max-width:92vw; box-shadow:0 6px 24px rgba(0,0,0,.3);
+  font-size:1.05rem; overflow:hidden;
 }
+#toast #toastUndo{ font-weight:700; font-size:1.05rem; padding:8px 16px; min-height:44px; }
+#toastBar{ position:absolute; left:0; bottom:0; height:4px; background:var(--ink); width:100%; transform-origin:left; }
+#toastBar.laeuft{ animation:ablauf linear forwards; }
+@keyframes ablauf{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
 #toast[hidden]{ display:none; }
 #toast button{ background:none; border:1px solid currentColor; color:inherit; border-radius:6px; padding:4px 10px; }
 .foot{ color:var(--muted); font-size:.85rem; text-align:center; margin:24px 0 8px; }
@@ -386,7 +392,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     </div>
   </section>
 
-  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert.</p>
+  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 b</p>
 </main>
 
 <div class="overlay" id="stdOverlay" hidden>
@@ -420,7 +426,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   </div>
 </div>
 
-<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button></div>
+<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button><span id="toastBar"></span></div>
 
 <div class="overlay" id="dlg" hidden><dialog open>
   <form method="dialog" id="dlgForm">
@@ -648,7 +654,7 @@ var __objRest = (source, exclude) => {
       $("#dlgText").hidden = !text;
       $("#dlgFields").innerHTML = fields.map((f, i) => {
         var _a;
-        return '\n      <label for="f'.concat(i, '">').concat(esc(f.label), '</label>\n      <input id="f').concat(i, '" ').concat(f.money ? 'inputmode="decimal"' : "", " ").concat(f.pin ? 'type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8"' : "", ' value="').concat(esc((_a = f.value) != null ? _a : ""), '" placeholder="').concat(esc(f.placeholder || ""), '" autocomplete="off">\n      ').concat(f.hint ? '<div class="hint">'.concat(esc(f.hint), "</div>") : "");
+        return '\n      <label for="f'.concat(i, '">').concat(esc(f.label), '</label>\n      <input id="f').concat(i, '" ').concat(f.money ? 'inputmode="decimal"' : "", " ").concat(f.pin ? 'type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8"' : "", ' value="').concat(esc((_a = f.value) != null ? _a : ""), '" placeholder="').concat(esc(f.placeholder || ""), '" autocomplete="off">\n      ').concat(f.hint ? '<div class="hint">'.concat(esc(f.hint), "</div>") : "", "\n      ").concat(f.schnell ? '<button type="button" class="btn schnell" data-fill="'.concat(i, '" data-val="').concat(esc(f.schnell.wert), '">').concat(esc(f.schnell.label), "</button>") : "");
       }).join("");
       const okBtn = $("#dlgOk");
       okBtn.textContent = ok;
@@ -666,11 +672,19 @@ var __objRest = (source, exclude) => {
       const onKey = (e) => {
         if (e.key === "Escape") done(null);
       };
+      const onFill = (e) => {
+        const b = e.target.closest("[data-fill]");
+        if (!b) return;
+        $("#f" + b.dataset.fill).value = b.dataset.val;
+        done(fields.map((_, i) => $("#f" + i).value));
+      };
       function cleanup() {
+        $("#dlgFields").removeEventListener("click", onFill);
         $("#dlgForm").removeEventListener("submit", onSubmit);
         $("#dlgCancel").removeEventListener("click", onCancel);
         document.removeEventListener("keydown", onKey);
       }
+      $("#dlgFields").addEventListener("click", onFill);
       $("#dlgForm").addEventListener("submit", onSubmit);
       $("#dlgCancel").addEventListener("click", onCancel);
       document.addEventListener("keydown", onKey);
@@ -688,6 +702,14 @@ var __objRest = (source, exclude) => {
     undoFn = undo || null;
     $("#toastUndo").hidden = !undo;
     $("#toast").hidden = false;
+    const bar = $("#toastBar");
+    bar.classList.remove("laeuft");
+    bar.hidden = !undo;
+    if (undo) {
+      void bar.offsetWidth;
+      bar.style.animationDuration = (dauer || 6e3) / 1e3 + "s";
+      bar.classList.add("laeuft");
+    }
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
       $("#toast").hidden = true;
@@ -932,12 +954,18 @@ var __objRest = (source, exclude) => {
       if (!a && e.target !== ov) return;
       const act = a ? a.dataset.stdact : "abbrechen";
       if (act === "speichern") {
-        const neu = Object.assign({}, S.personen[pid]);
+        const neu = Object.assign({}, S.personen[pid]), altStd = S.personen[pid].standard;
         if (Object.keys(st).length) neu.standard = st;
         else delete neu.standard;
         await store.set("personen", pid, neu).catch(() => {
         });
-        toast(Object.keys(st).length ? "Standard-Fr\xFChst\xFCck gespeichert" : "Standard-Fr\xFChst\xFCck gel\xF6scht");
+        toast(Object.keys(st).length ? "\u201EWie immer\u201C gespeichert" : "\u201EWie immer\u201C gel\xF6scht", () => {
+          const q = Object.assign({}, S.personen[pid]);
+          if (altStd) q.standard = altStd;
+          else delete q.standard;
+          store.set("personen", pid, q).catch(() => {
+          });
+        }, UNDO_TOAST);
       }
       ov.hidden = true;
       ov.onclick = null;
@@ -1042,10 +1070,18 @@ var __objRest = (source, exclude) => {
   }
   async function einzahlen(pid) {
     if (!await pinPruefen("Einzahlungen buchen ist gesch\xFCtzt.")) return;
+    const schulden = -stand(pid).neu;
     const r = await ask({
       title: "Einzahlung",
-      text: "Bargeld, das " + S.personen[pid].name + " in die Kasse gelegt hat.",
-      fields: [{ label: "Betrag in \u20AC", money: true }, { label: "Zahlungsart (optional)", placeholder: "z. B. bar oder PayPal" }],
+      text: "Geld, das " + S.personen[pid].name + " in die Kasse gelegt hat." + (schulden > 4e-3 ? " Aktuelle Schulden: " + money(schulden) + "." : ""),
+      fields: [
+        {
+          label: "Betrag in \u20AC",
+          money: true,
+          schnell: schulden > 4e-3 ? { label: "Alle Schulden tilgen (" + money(schulden) + ")", wert: String(r2(schulden)).replace(".", ",") } : null
+        },
+        { label: "Zahlungsart (optional)", placeholder: "z. B. bar oder PayPal" }
+      ],
       ok: "Einzahlung buchen"
     });
     if (!r) return;
@@ -1808,8 +1844,8 @@ var __objRest = (source, exclude) => {
     if (rm) {
       const id = rm.dataset.rm;
       const b = S.buchungen[id];
-      store.del("buchungen", id).then(() => toast("".concat((b == null ? void 0 : b.text) || "Buchung", " entfernt"), () => b && store.set("buchungen", id, b).catch(() => {
-      }))).catch(() => {
+      store.del("buchungen", id).then(() => toast("".concat(b ? b.text : "Buchung", " entfernt"), () => b && store.set("buchungen", id, b).catch(() => {
+      }), UNDO_TOAST)).catch(() => {
       });
       return;
     }
@@ -1881,9 +1917,12 @@ var __objRest = (source, exclude) => {
       const p = S.produkte[id];
       const r = await ask({ title: p.name + " l\xF6schen?", text: "Bereits gebuchte Posten bleiben erhalten.", ok: "L\xF6schen", danger: true });
       if (r) {
+        const alt = kopie(p);
         await store.del("produkte", id).catch(() => {
         });
         renderProdukte();
+        toast(p.name + " gel\xF6scht", () => store.set("produkte", id, alt).then(renderProdukte).catch(() => {
+        }), UNDO_TOAST);
       }
     }
   });
@@ -1900,7 +1939,10 @@ var __objRest = (source, exclude) => {
   });
   $("#besorgList").addEventListener("click", (e) => {
     const b = e.target.closest("[data-bdel]");
-    if (b) store.del("liste", b.dataset.bdel).catch(() => {
+    if (!b) return;
+    const id = b.dataset.bdel, alt = S.liste[id];
+    store.del("liste", id).then(() => toast((alt ? alt.text : "Eintrag") + " erledigt", () => alt && store.set("liste", id, alt).catch(() => {
+    }), UNDO_TOAST)).catch(() => {
     });
   });
   $("#banner").addEventListener("click", (e) => {
@@ -1989,11 +2031,16 @@ var __objRest = (source, exclude) => {
   $("#ppWeg").addEventListener("click", async () => {
     const r = await ask({ title: "QR-Code entfernen?", ok: "Entfernen", danger: true });
     if (!r) return;
+    const alt = ppLaden();
     try {
       localStorage.removeItem(PPKEY);
     } catch (e) {
     }
     render();
+    toast("QR-Code entfernt", () => {
+      ppSpeichern(alt);
+      render();
+    }, UNDO_TOAST);
   });
   $("#undoBtn").addEventListener("click", () => {
     renderUndo();
