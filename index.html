@@ -135,7 +135,7 @@ td.r,th.r{ text-align:right; }
 tbody tr:nth-child(even){ background:var(--row); }
 tr.active td:first-child{ border-left:4px solid var(--ink); }
 
-.prow{ display:grid; grid-template-columns:1fr 110px auto auto auto auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
+.prow{ display:grid; grid-template-columns:1fr 110px auto auto auto auto auto; gap:8px; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); }
 .prow input[type=text], .prow input[inputmode]{ padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--paper); min-width:0; }
 .prow label{ font-size:.85rem; color:var(--muted); display:flex; gap:6px; align-items:center; white-space:nowrap; }
 .prow .ord{ display:flex; gap:4px; }
@@ -151,6 +151,15 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .tp-row .wer{ display:block; font-size:.9rem; color:var(--muted); font-weight:400; }
 .tp-row .pr{ font-size:1.5rem; font-weight:700; color:var(--ink); text-align:right; }
 .tp-row .pr.fehlt{ font-size:1rem; color:var(--debt); }
+.inkasso{ background:var(--surface); border:1px solid var(--line); border-left:5px solid var(--debt); border-radius:8px; padding:12px 16px; margin-bottom:16px; }
+.inkasso h2{ margin:0; font-size:1.15rem; color:var(--debt); }
+.inkasso p{ margin:2px 0 10px; color:var(--muted); font-size:.92rem; }
+.inkasso ul{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px; }
+.inkasso li button{ border:1px solid var(--line); background:var(--paper); border-radius:6px; padding:8px 12px; text-align:left; min-height:44px; }
+.inkasso li .nm{ font-weight:700; }
+.inkasso li .bt{ color:var(--debt); font-weight:700; margin-left:8px; }
+.inkasso li .gr{ display:block; font-size:.82rem; color:var(--muted); }
+@media (max-width:760px){ #v-liste.has-sel #inkasso{ display:none; } }
 .hist summary{ cursor:pointer; padding:10px 0; border-bottom:1px solid var(--line); }
 .besorg{ list-style:none; margin:0; padding:0; }
 .besorg li{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
@@ -211,6 +220,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   <div id="banner"></div>
 
   <section class="view" id="v-liste">
+    <div id="inkasso"></div>
     <div class="split" id="split">
       <aside class="people">
         <div class="filter">
@@ -237,6 +247,11 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
         <button class="btn primary" id="brTeilen">Liste senden</button>
         <button class="btn" id="brNamen" aria-pressed="false">Namen anzeigen</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>Heute gezählt</h2>
+      <p class="muted">Weitere Produkte, die heute seit 0 Uhr gebucht wurden. Welche hier auftauchen, stellst du unter „Produkte“ mit dem Häkchen „Zählen“ ein.</p>
+      <div id="zaListe"></div>
     </div>
   </section>
 
@@ -440,12 +455,21 @@ var __objRest = (source, exclude) => {
     }
     migBroetchen();
     migTagespreis();
+    migZaehlen();
     try {
       if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
     } catch (e) {
     }
     if (!storageOk()) banner("Dieser Browser kann hier nichts dauerhaft speichern. Bitte die Datei in einem anderen Browser oder in einer Kiosk-App \xF6ffnen.");
     render();
+  }
+  function migZaehlen() {
+    const ids = Object.keys(S.produkte);
+    if (!ids.length || ids.some((id) => S.produkte[id].zaehlen !== void 0)) return;
+    ids.forEach((id) => {
+      S.produkte[id].zaehlen = S.produkte[id].name === "Ei";
+    });
+    store.save();
   }
   function migTagespreis() {
     const ids = Object.keys(S.produkte);
@@ -833,7 +857,9 @@ var __objRest = (source, exclude) => {
     });
     document.querySelectorAll(".view").forEach((v) => v.hidden = v.id !== "v-" + ui.tab);
     if (ui.sel && !S.personen[ui.sel]) ui.sel = null;
+    schuldenPruefen();
     if (ui.tab === "liste") {
+      renderInkasso();
       renderPeople();
       renderDetail();
     }
@@ -858,10 +884,10 @@ var __objRest = (source, exclude) => {
     if (!$("#banner").dataset.fix) $("#banner").innerHTML = hatDaten && tage > 14 && ui.tab !== "sicherung" ? '<div class="banner">'.concat(lb ? "Die letzte Sicherung ist \xFCber zwei Wochen alt." : "Es gibt noch keine Sicherung.", ' <button class="btn small" data-goto="sicherung">Jetzt sichern</button></div>') : "";
   }
   let brNamen = false;
-  function broetchenHeute() {
+  function broetchenHeute(feld) {
     const start = /* @__PURE__ */ new Date();
     start.setHours(0, 0, 0, 0);
-    const prods = produkte().filter((p) => p.broetchen);
+    const prods = produkte().filter((p) => p[feld || "broetchen"]);
     const rows = prods.map((p) => ({ p, n: 0, wer: {} }));
     Object.keys(S.buchungen).forEach((id) => {
       const b = S.buchungen[id];
@@ -891,6 +917,7 @@ var __objRest = (source, exclude) => {
   }
   function renderBroetchen() {
     renderTagespreise();
+    renderZaehlen();
     const rows = broetchenHeute();
     const gesamt = rows.reduce((s, r) => s + r.n, 0);
     const preis = r2(rows.reduce((s, r) => s + r.n * (r.p.preis || 0), 0));
@@ -904,6 +931,11 @@ var __objRest = (source, exclude) => {
       return;
     }
     $("#brListe").innerHTML = gesamt ? '<div class="tablewrap"><table class="br-tab"><tbody>'.concat(rows.filter((r) => r.n).map((r) => '\n      <tr><td class="anz num">'.concat(r.n, '</td><td class="nm">').concat(esc(r.p.name)).concat(brNamen ? '<span class="wer">'.concat(esc(wer(r)), "</span>") : "", "</td></tr>")).join(""), '</tbody>\n      <tfoot><tr><td class="num">').concat(gesamt, '</td><td>Br\xF6tchen insgesamt <span class="muted num">(Verkaufswert ').concat(money(preis), ")</span></td></tr></tfoot></table></div>") : '<p class="muted">Heute wurden noch keine Br\xF6tchen gebucht.</p>';
+  }
+  function renderZaehlen() {
+    const rows = broetchenHeute("zaehlen");
+    const wer = (r) => Object.keys(r.wer).sort((a, b) => a.localeCompare(b, "de")).map((n) => r.wer[n] > 1 ? r.wer[n] + "\xD7 " + n : n).join(", ");
+    $("#zaListe").innerHTML = rows.length ? '<div class="tablewrap"><table class="br-tab"><tbody>'.concat(rows.map((r) => '\n      <tr><td class="anz num">'.concat(r.n, '</td><td class="nm">').concat(esc(r.p.name)).concat(brNamen && r.n ? '<span class="wer">'.concat(esc(wer(r)), "</span>") : "", "</td></tr>")).join(""), "</tbody></table></div>") : '<p class="muted">Kein Produkt ist zum Z\xE4hlen markiert.</p>';
   }
   function broetchenText() {
     const rows = broetchenHeute().filter((r) => r.n);
@@ -1058,6 +1090,35 @@ var __objRest = (source, exclude) => {
     const d = /* @__PURE__ */ new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   };
+  const INKASSO_STAMM_EURO = 30, INKASSO_GAST_TAGE = 14;
+  function schuldenPruefen() {
+    let geaendert = false;
+    Object.keys(S.personen).forEach((id) => {
+      const p = S.personen[id], neu = stand(id).neu;
+      if (neu < -4e-3 && !p.schuldenSeit) {
+        p.schuldenSeit = Date.now();
+        geaendert = true;
+      }
+      if (neu >= -4e-3 && p.schuldenSeit) {
+        delete p.schuldenSeit;
+        geaendert = true;
+      }
+    });
+    if (geaendert) store.save();
+  }
+  function inkassoListe() {
+    return persons().map((p) => {
+      const neu = stand(p.id).neu;
+      const tage = p.schuldenSeit ? Math.floor((Date.now() - p.schuldenSeit) / 864e5) : 0;
+      const faellig = p.gast ? neu < -4e-3 && tage > INKASSO_GAST_TAGE : neu < -INKASSO_STAMM_EURO;
+      return { p, neu, tage, faellig };
+    }).filter((x) => x.faellig).sort((a, b) => a.neu - b.neu);
+  }
+  function renderInkasso() {
+    $("#v-liste").classList.toggle("has-sel", !!ui.sel);
+    const l = inkassoListe();
+    $("#inkasso").innerHTML = l.length ? '<div class="inkasso">\n    <h2>Inkasso-Ecke</h2>\n    <p>Die Kasse brennt! Bitte bei Gelegenheit etwas einzahlen. Ab '.concat(INKASSO_STAMM_EURO, " \u20AC Schulden oder bei G\xE4sten nach ").concat(INKASSO_GAST_TAGE, " Tagen im Minus.</p>\n    <ul>").concat(l.map((x) => '<li><button data-pid="'.concat(esc(x.p.id), '"><span class="nm">').concat(esc(x.p.name), '</span><span class="bt num">').concat(money(x.neu), "</span>\n      ").concat(x.p.gast ? '<span class="gr">Gast, seit '.concat(x.tage, " Tagen im Minus</span>") : "", "</button></li>")).join(""), "</ul>\n  </div>") : "";
+  }
   function renderPeople() {
     const f = ui.filter.trim().toLowerCase();
     const ps = persons().filter((p) => !f || (p.name || "").toLowerCase().includes(f));
@@ -1119,7 +1180,7 @@ var __objRest = (source, exclude) => {
     const list = produkte();
     $("#seedProd").hidden = list.length > 0;
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest("#prodList")) return;
-    $("#prodList").innerHTML = list.length ? list.map((p, i) => '\n    <div class="prow" data-pid="'.concat(esc(p.id), '">\n      <input type="text" data-f="name" value="').concat(esc(p.name), '" aria-label="Produktname">\n      <input data-f="preis" inputmode="decimal" value="').concat(esc(String(p.preis || 0).replace(".", ",")), '" aria-label="Preis in Euro">\n      <label><input type="checkbox" data-f="variabel" ').concat(p.variabel ? "checked" : "", '> Preis abfragen</label>\n      <label><input type="checkbox" data-f="tagespreis" ').concat(p.tagespreis ? "checked" : "", '> Tagespreis</label>\n      <label><input type="checkbox" data-f="broetchen" ').concat(p.broetchen ? "checked" : "", '> Br\xF6tchen</label>\n      <span class="ord">\n        <button class="btn small" data-mv="-1" ').concat(i === 0 ? "disabled" : "", ' aria-label="Nach oben">\u2191</button>\n        <button class="btn small" data-mv="1" ').concat(i === list.length - 1 ? "disabled" : "", ' aria-label="Nach unten">\u2193</button>\n        <button class="btn small danger" data-pdel aria-label="L\xF6schen">\u2715</button>\n      </span>\n    </div>')).join("") : '<p class="muted">Noch keine Produkte angelegt.</p>';
+    $("#prodList").innerHTML = list.length ? list.map((p, i) => '\n    <div class="prow" data-pid="'.concat(esc(p.id), '">\n      <input type="text" data-f="name" value="').concat(esc(p.name), '" aria-label="Produktname">\n      <input data-f="preis" inputmode="decimal" value="').concat(esc(String(p.preis || 0).replace(".", ",")), '" aria-label="Preis in Euro">\n      <label><input type="checkbox" data-f="variabel" ').concat(p.variabel ? "checked" : "", '> Preis abfragen</label>\n      <label><input type="checkbox" data-f="tagespreis" ').concat(p.tagespreis ? "checked" : "", '> Tagespreis</label>\n      <label><input type="checkbox" data-f="zaehlen" ').concat(p.zaehlen ? "checked" : "", '> Z\xE4hlen</label>\n      <label><input type="checkbox" data-f="broetchen" ').concat(p.broetchen ? "checked" : "", '> Br\xF6tchen</label>\n      <span class="ord">\n        <button class="btn small" data-mv="-1" ').concat(i === 0 ? "disabled" : "", ' aria-label="Nach oben">\u2191</button>\n        <button class="btn small" data-mv="1" ').concat(i === list.length - 1 ? "disabled" : "", ' aria-label="Nach unten">\u2193</button>\n        <button class="btn small danger" data-pdel aria-label="L\xF6schen">\u2715</button>\n      </span>\n    </div>')).join("") : '<p class="muted">Noch keine Produkte angelegt.</p>';
   }
   function renderBesorg() {
     const items = Object.entries(S.liste).map(([id, x]) => __spreadValues({ id }, x)).sort((a, b) => a.ts - b.ts);
@@ -1135,6 +1196,12 @@ var __objRest = (source, exclude) => {
     renderPeople();
   });
   $("#addPerson").addEventListener("click", () => personNeu(false));
+  $("#inkasso").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-pid]");
+    if (!b) return;
+    ui.sel = b.dataset.pid;
+    render();
+  });
   $("#plist").addEventListener("click", (e) => {
     if (e.target.closest("[data-addgast]")) {
       personNeu(true);
@@ -1209,6 +1276,7 @@ var __objRest = (source, exclude) => {
     }
     if (f === "variabel") prodSpeichern(id, { variabel: e.target.checked });
     if (f === "broetchen") prodSpeichern(id, { broetchen: e.target.checked });
+    if (f === "zaehlen") prodSpeichern(id, { zaehlen: e.target.checked });
     if (f === "tagespreis") prodSpeichern(id, e.target.checked ? { tagespreis: true, variabel: false } : { tagespreis: false });
   });
   $("#prodList").addEventListener("focusout", () => setTimeout(() => {
@@ -1299,6 +1367,7 @@ var __objRest = (source, exclude) => {
       store.save();
       migBroetchen();
       migTagespreis();
+      migZaehlen();
       ui.sel = null;
       render();
       toast("Sicherung geladen.");
