@@ -177,6 +177,9 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .vf-step{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .vf-step .btn{ min-width:52px; font-size:1.3rem; }
 .vf-zahl{ font-size:2rem; font-weight:700; color:var(--ink); min-width:40px; text-align:center; }
+.undo-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.undo-row .nm{ font-weight:700; }
+#undoOverlay{ z-index:25; }
 .std-box{ text-align:left; }
 .std-row{ display:grid; grid-template-columns:1fr auto 40px auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
 .std-c{ text-align:center; font-weight:700; font-size:1.15rem; }
@@ -254,6 +257,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     <button data-tab="besorg">Besorg mal</button>
     <button data-tab="bezahlen">PayPal</button>
     <button data-tab="sicherung">Sicherung</button>
+    <button id="undoBtn" title="Wichtige Aktionen rückgängig machen">↶ Rückgängig</button>
     <button id="fullscreen" title="Vollbild">⛶</button>
   </nav>
 </header>
@@ -394,6 +398,15 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
       <button class="btn" data-stdact="abbrechen">Abbrechen</button>
       <button class="btn primary" data-stdact="speichern">Speichern</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="undoOverlay" hidden>
+  <div class="qr-box std-box" role="dialog" aria-modal="true" aria-labelledby="undoTitel">
+    <h2 id="undoTitel">Rückgängig machen</h2>
+    <p class="muted">Die letzten wichtigen Aktionen: Einzahlungen, Kontokorrekturen, entfernte Personen, Dienstabschlüsse, Tagespreise und geladene Sicherungen. Normale Buchungen nimmst du bei der Person mit „−1“ zurück.</p>
+    <div id="undoListe"></div>
+    <div class="row std-actions"><button class="btn primary" id="undoZu">Schließen</button></div>
   </div>
 </div>
 
@@ -670,7 +683,7 @@ var __objRest = (source, exclude) => {
     });
   }
   let toastTimer = null, undoFn = null;
-  function toast(msg, undo) {
+  function toast(msg, undo, dauer) {
     $("#toastMsg").textContent = msg;
     undoFn = undo || null;
     $("#toastUndo").hidden = !undo;
@@ -679,7 +692,7 @@ var __objRest = (source, exclude) => {
     toastTimer = setTimeout(() => {
       $("#toast").hidden = true;
       undoFn = null;
-    }, undo ? 6e3 : 3500);
+    }, dauer || (undo ? 6e3 : 3500));
   }
   $("#toastUndo").addEventListener("click", () => {
     if (undoFn) undoFn();
@@ -692,17 +705,147 @@ var __objRest = (source, exclude) => {
   }
   const heuteKey = () => tagKey(/* @__PURE__ */ new Date());
   const tagesPreis = (p) => p && p.tagespreis && p.tagPreisDatum === heuteKey() && typeof p.tagPreis === "number" ? p.tagPreis : null;
+  const UNDOKEY = "kk-undo", UNDOVOLL = "kk-undo-voll", UNDO_MAX = 25, UNDO_TOAST = 3e4;
+  function undoLaden() {
+    try {
+      return JSON.parse(localStorage.getItem(UNDOKEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function undoSpeichern(l) {
+    while (l.length > UNDO_MAX) l.shift();
+    try {
+      localStorage.setItem(UNDOKEY, JSON.stringify(l));
+    } catch (e) {
+      l.splice(0, Math.ceil(l.length / 2));
+      try {
+        localStorage.setItem(UNDOKEY, JSON.stringify(l));
+      } catch (e2) {
+      }
+    }
+  }
+  const kopie = (o) => JSON.parse(JSON.stringify(o));
+  function undoMerken(label, typ, data) {
+    const l = undoLaden();
+    const rec = { id: uid(), ts: Date.now(), label, typ, data };
+    l.push(rec);
+    undoSpeichern(l);
+    return rec.id;
+  }
+  function undoMoeglich(rec) {
+    if (rec.erledigt) return "bereits r\xFCckg\xE4ngig gemacht";
+    if (rec.typ === "abschluss") {
+      if (!S.abschluesse[rec.data.aid]) return "Abschluss existiert nicht mehr";
+      if (Object.keys(S.abschluesse).some((k) => S.abschluesse[k].ts > S.abschluesse[rec.data.aid].ts)) return "danach wurde schon ein weiterer Dienst abgeschlossen";
+    }
+    if (rec.typ === "voll") {
+      let v = null;
+      try {
+        v = JSON.parse(localStorage.getItem(UNDOVOLL));
+      } catch (e) {
+      }
+      if (!v || v.id !== rec.id) return "nur die letzte Wiederherstellung kann zur\xFCckgenommen werden";
+    }
+    if (rec.typ === "person" && S.personen[rec.data.pid]) return "Person ist schon wieder da";
+    return "";
+  }
+  async function undoAusfuehren(id, ohnePin) {
+    const l = undoLaden();
+    const rec = l.find((x) => x.id === id);
+    if (!rec) return;
+    const grund = undoMoeglich(rec);
+    if (grund) {
+      toast("Nicht m\xF6glich: " + grund + ".");
+      return;
+    }
+    if (!ohnePin && !await pinPruefen("R\xFCckg\xE4ngig machen ist gesch\xFCtzt.")) return;
+    const d = rec.data;
+    try {
+      if (rec.typ === "buchung") {
+        const b = d.buchung, p = S.personen[b.personId];
+        if (S.buchungen[d.bid] && p && (S.buchungen[d.bid].ts || 0) > (p.bisTs || 0)) await store.del("buchungen", d.bid);
+        else if (p) await store.set("buchungen", uid(), { personId: b.personId, text: "Storno: " + b.text, betrag: -b.betrag, ts: Date.now(), art: "korrektur" });
+        else {
+          toast("Nicht m\xF6glich: Die Person gibt es nicht mehr.");
+          return;
+        }
+      }
+      if (rec.typ === "person") {
+        await store.set("personen", d.pid, d.person);
+        for (const bid of Object.keys(d.buchungen)) await store.set("buchungen", bid, d.buchungen[bid]);
+      }
+      if (rec.typ === "abschluss") {
+        for (const pid of Object.keys(d.vorher)) {
+          const p = S.personen[pid];
+          if (!p) continue;
+          await store.set("personen", pid, Object.assign({}, p, { saldo: d.vorher[pid].saldo, bisTs: d.vorher[pid].bisTs }));
+        }
+        for (const bid of Object.keys(d.buchungen)) if (S.personen[d.buchungen[bid].personId]) await store.set("buchungen", bid, d.buchungen[bid]);
+        await store.del("abschluesse", d.aid);
+      }
+      if (rec.typ === "tagespreis") {
+        const p = S.produkte[d.prodId];
+        if (p) {
+          const neu = Object.assign({}, p);
+          delete neu.tagPreis;
+          delete neu.tagPreisDatum;
+          if (d.vorher.tagPreisDatum !== void 0) {
+            neu.tagPreis = d.vorher.tagPreis;
+            neu.tagPreisDatum = d.vorher.tagPreisDatum;
+          }
+          await store.set("produkte", d.prodId, neu);
+        }
+        for (const bid of Object.keys(d.buchungen)) if (S.buchungen[bid]) await store.set("buchungen", bid, Object.assign({}, S.buchungen[bid], d.buchungen[bid]));
+      }
+      if (rec.typ === "voll") {
+        const v = JSON.parse(localStorage.getItem(UNDOVOLL));
+        COLLS.forEach((c) => {
+          S[c] = v.daten[c] || {};
+        });
+        store.save();
+        localStorage.removeItem(UNDOVOLL);
+      }
+    } catch (e) {
+      toast("R\xFCckg\xE4ngig machen hat nicht geklappt.");
+      return;
+    }
+    rec.erledigt = Date.now();
+    undoSpeichern(l);
+    ui.sel = ui.sel && S.personen[ui.sel] ? ui.sel : null;
+    render();
+    renderUndo();
+    toast("R\xFCckg\xE4ngig gemacht: " + rec.label);
+  }
+  function vollSicherungVorher(label) {
+    const id = undoMerken(label, "voll", {});
+    try {
+      localStorage.setItem(UNDOVOLL, JSON.stringify({ id, daten: kopie(S) }));
+    } catch (e) {
+    }
+    return id;
+  }
+  function renderUndo() {
+    const el = $("#undoListe");
+    if (!el) return;
+    const l = undoLaden().slice().reverse();
+    const zeit = (ts) => new Date(ts).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    el.innerHTML = l.length ? l.map((r) => {
+      const g = undoMoeglich(r);
+      return '<div class="undo-row"><div><div class="nm">'.concat(esc(r.label), '</div><div class="muted">').concat(esc(zeit(r.ts))).concat(g ? ", " + esc(g) : "", "</div></div>\n      ").concat(g ? "" : '<button class="btn small" data-undo="'.concat(esc(r.id), '">R\xFCckg\xE4ngig</button>'), "</div>");
+    }).join("") : '<p class="muted">Noch keine wichtigen Aktionen.</p>';
+  }
   const ADMIN_PIN = "1120";
   let pinBis = 0;
-  async function pinPruefen(grund) {
-    if (Date.now() < pinBis) {
+  async function pinPruefen(grund, merken) {
+    if (merken && Date.now() < pinBis) {
       pinBis = Date.now() + 5 * 6e4;
       return true;
     }
     const r = await ask({ title: "PIN erforderlich", text: grund, fields: [{ label: "PIN", pin: true }], ok: "Entsperren" });
     if (!r) return false;
     if (r[0].trim() === ADMIN_PIN) {
-      pinBis = Date.now() + 5 * 6e4;
+      if (merken) pinBis = Date.now() + 5 * 6e4;
       return true;
     }
     toast("Falsche PIN.");
@@ -877,6 +1020,15 @@ var __objRest = (source, exclude) => {
       toast("Bitte einen g\xFCltigen Preis eingeben.");
       return;
     }
+    const liste0 = tagesEintraege(prodId), bsVorher = {};
+    liste0.forEach((b) => {
+      bsVorher[b.id] = { betrag: b.betrag, preisOffen: !!b.preisOffen };
+    });
+    const u = undoMerken(
+      "".concat(p.name, ": Preis ").concat(money(v), " festgelegt") + (tp !== null ? " (vorher ".concat(money(tp), ")") : ""),
+      "tagespreis",
+      { prodId, vorher: p.tagPreisDatum !== void 0 ? { tagPreis: p.tagPreis, tagPreisDatum: p.tagPreisDatum } : {}, buchungen: bsVorher }
+    );
     await store.set("produkte", prodId, Object.assign({}, p, { tagPreis: v, tagPreisDatum: heuteKey() })).catch(() => {
     });
     const liste = tagesEintraege(prodId);
@@ -886,9 +1038,10 @@ var __objRest = (source, exclude) => {
       await store.set("buchungen", id, Object.assign(b, { betrag: -r2(v), preisOffen: false })).catch(() => {
       });
     }
-    toast("".concat(p.name, " heute ").concat(money(v)) + (liste.length ? ", gilt f\xFCr ".concat(liste.length, " Eintr\xE4ge") : ""));
+    toast("".concat(p.name, " heute ").concat(money(v)) + (liste.length ? ", gilt f\xFCr ".concat(liste.length, " Eintr\xE4ge") : ""), () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   async function einzahlen(pid) {
+    if (!await pinPruefen("Einzahlungen buchen ist gesch\xFCtzt.")) return;
     const r = await ask({
       title: "Einzahlung",
       text: "Bargeld, das " + S.personen[pid].name + " in die Kasse gelegt hat.",
@@ -902,10 +1055,14 @@ var __objRest = (source, exclude) => {
       return;
     }
     const id = uid();
-    await store.set("buchungen", id, { personId: pid, text: r[1] && r[1].trim() ? "Einzahlung (" + r[1].trim() + ")" : "Einzahlung", betrag: v, ts: Date.now(), art: "einzahlung" }).catch(() => {
-    });
-    toast("Einzahlung \xFCber ".concat(money(v), " gebucht"), () => store.del("buchungen", id).catch(() => {
-    }));
+    const b = { personId: pid, text: r[1] && r[1].trim() ? "Einzahlung (" + r[1].trim() + ")" : "Einzahlung", betrag: v, ts: Date.now(), art: "einzahlung" };
+    try {
+      await store.set("buchungen", id, b);
+    } catch (e) {
+      return;
+    }
+    const u = undoMerken("Einzahlung ".concat(money(v), " f\xFCr ").concat(S.personen[pid].name), "buchung", { bid: id, buchung: b });
+    toast("Einzahlung \xFCber ".concat(money(v), " gebucht"), () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   async function korrigieren(pid) {
     if (!await pinPruefen("Kontost\xE4nde korrigieren ist gesch\xFCtzt.")) return;
@@ -925,10 +1082,14 @@ var __objRest = (source, exclude) => {
     const diff = r2(v - st.neu);
     if (Math.abs(diff) < 5e-3) return;
     const id = uid();
-    await store.set("buchungen", id, { personId: pid, text: "Korrektur", betrag: diff, ts: Date.now(), art: "korrektur" }).catch(() => {
-    });
-    toast("Kontostand korrigiert", () => store.del("buchungen", id).catch(() => {
-    }));
+    const b = { personId: pid, text: "Korrektur", betrag: diff, ts: Date.now(), art: "korrektur" };
+    try {
+      await store.set("buchungen", id, b);
+    } catch (e) {
+      return;
+    }
+    const u = undoMerken("Kontostand ".concat(S.personen[pid].name, ": ").concat(money(st.neu), " auf ").concat(money(v)), "buchung", { bid: id, buchung: b });
+    toast("Kontostand korrigiert", () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   async function personNeu(gast) {
     const r = await ask({ title: gast ? "Gast hinzuf\xFCgen" : "Person zur Stammbesatzung hinzuf\xFCgen", fields: [
@@ -962,14 +1123,19 @@ var __objRest = (source, exclude) => {
     const warn = Math.abs(st.neu) > 4e-3 ? " Achtung: Der Kontostand betr\xE4gt ".concat(money(st.neu), " und geht damit verloren.") : "";
     const r = await ask({ title: p.name + " entfernen?", text: "Die Person und ihre offenen Buchungen werden gel\xF6scht. Fr\xFChere Abschl\xFCsse bleiben im Verlauf." + warn, ok: "Entfernen", danger: true });
     if (!r) return;
+    const bs = {};
+    Object.keys(S.buchungen).forEach((id) => {
+      if (S.buchungen[id].personId === pid) bs[id] = kopie(S.buchungen[id]);
+    });
+    const u = undoMerken("".concat(p.name, " entfernt (Kontostand ").concat(money(st.neu), ")"), "person", { pid, person: kopie(p), buchungen: bs });
     try {
       await store.del("personen", pid);
-      for (const b of Object.entries(S.buchungen)) if (b[1].personId === pid) await store.del("buchungen", b[0]);
+      for (const id of Object.keys(bs)) await store.del("buchungen", id);
     } catch (e) {
     }
     ui.sel = null;
     render();
-    toast(p.name + " entfernt");
+    toast(p.name + " entfernt", () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   async function abschliessen() {
     if (!await pinPruefen("Den Dienst abschlie\xDFen ist gesch\xFCtzt.")) return;
@@ -1002,6 +1168,16 @@ var __objRest = (source, exclude) => {
     if (!r) return;
     const $b = $("#doAbschluss");
     $b.disabled = true;
+    const vorher = {}, bs = {};
+    aktiv.forEach((x) => {
+      vorher[x.p.id] = { saldo: x.p.saldo || 0, bisTs: x.p.bisTs || 0 };
+      x.items.forEach((b) => {
+        const c = kopie(b);
+        delete c.id;
+        bs[b.id] = c;
+      });
+    });
+    const u = undoMerken("Dienst abgeschlossen (".concat(aktiv.length, " ").concat(aktiv.length === 1 ? "Person" : "Personen", ")"), "abschluss", { aid: "a" + cutoff, vorher, buchungen: bs });
     try {
       await store.set("abschluesse", "a" + cutoff, { ts: cutoff, eintraege: list.map((x) => ({
         name: x.p.name,
@@ -1022,7 +1198,7 @@ var __objRest = (source, exclude) => {
         await store.set("personen", id, __spreadProps(__spreadValues({}, rest), { saldo: x.neu, bisTs: cutoff }));
       }
       for (const x of aktiv) for (const b of x.items) await store.del("buchungen", b.id);
-      toast("Dienst abgeschlossen");
+      toast("Dienst abgeschlossen", () => undoAusfuehren(u, true), UNDO_TOAST);
     } catch (e) {
       toast("Abschluss unvollst\xE4ndig. Bitte erneut versuchen.");
     }
@@ -1399,9 +1575,9 @@ var __objRest = (source, exclude) => {
         bestellt: Object.keys(b).map((t) => b[t] > 1 ? b[t] + "\xD7 " + t : t).join(", ")
       };
     });
-    const kopie = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste }));
+    const kopie2 = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste }));
     const list = tsLaden().filter((x) => !(x.tag === tag && x.grund !== "vorher"));
-    list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie });
+    list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie2 });
     list.sort((a, b) => a.ts - b.ts);
     while (list.length > TS_MAX) list.shift();
     return tsSpeichern(list);
@@ -1444,6 +1620,7 @@ var __objRest = (source, exclude) => {
     });
     if (!r) return;
     tsErstellen(tagKey(/* @__PURE__ */ new Date()), "vorher");
+    const u = vollSicherungVorher("Tagesstand vom " + new Date(x.ts).toLocaleDateString("de-DE") + " wiederhergestellt");
     S.personen = x.daten.personen || {};
     S.produkte = x.daten.produkte || {};
     S.buchungen = x.daten.buchungen || {};
@@ -1454,7 +1631,7 @@ var __objRest = (source, exclude) => {
     store.save();
     ui.sel = null;
     render();
-    toast("Stand wiederhergestellt.");
+    toast("Stand wiederhergestellt.", () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   function datei(name, text, typ) {
     const blob = new Blob([text], { type: typ });
@@ -1586,7 +1763,7 @@ var __objRest = (source, exclude) => {
     $("#besorgList").innerHTML = items.length ? items.map((x) => "<li><span>".concat(esc(x.text), '</span><button class="btn small" data-bdel="').concat(esc(x.id), '">Erledigt</button></li>')).join("") : '<li class="muted">Nichts zu besorgen.</li>';
   }
   document.querySelectorAll("nav.tabs button[data-tab]").forEach((b) => b.addEventListener("click", async () => {
-    if (b.dataset.tab === "produkte" && ui.tab !== "produkte" && !await pinPruefen("Produkte und Preise \xE4ndern ist gesch\xFCtzt.")) return;
+    if (b.dataset.tab === "produkte" && ui.tab !== "produkte" && !await pinPruefen("Produkte und Preise \xE4ndern ist gesch\xFCtzt.", true)) return;
     ui.tab = b.dataset.tab;
     render();
     window.scrollTo(0, 0);
@@ -1769,6 +1946,7 @@ var __objRest = (source, exclude) => {
       if (!await pinPruefen("Eine Sicherung laden ist gesch\xFCtzt.")) return;
       const r = await ask({ title: "Sicherung laden?", text: "Alle aktuellen Daten auf diesem Tablet werden durch die Sicherung vom " + new Date(o.ts).toLocaleString("de-DE") + " ersetzt.", ok: "Ersetzen", danger: true });
       if (!r) return;
+      const u = vollSicherungVorher("Sicherung vom " + new Date(o.ts).toLocaleDateString("de-DE") + " geladen");
       COLLS.forEach((c) => {
         S[c] = o.daten[c] || {};
       });
@@ -1779,7 +1957,7 @@ var __objRest = (source, exclude) => {
       migZaehlen();
       ui.sel = null;
       render();
-      toast("Sicherung geladen.");
+      toast("Sicherung geladen.", () => undoAusfuehren(u, true), UNDO_TOAST);
     };
     rd.readAsText(f);
     e.target.value = "";
@@ -1816,6 +1994,26 @@ var __objRest = (source, exclude) => {
     } catch (e) {
     }
     render();
+  });
+  $("#undoBtn").addEventListener("click", () => {
+    renderUndo();
+    $("#undoOverlay").hidden = false;
+  });
+  $("#undoZu").addEventListener("click", () => {
+    $("#undoOverlay").hidden = true;
+  });
+  $("#undoOverlay").addEventListener("click", (e) => {
+    if (e.target.id === "undoOverlay") {
+      $("#undoOverlay").hidden = true;
+      return;
+    }
+    const b = e.target.closest("[data-undo]");
+    if (!b) return;
+    const rec = undoLaden().find((x) => x.id === b.dataset.undo);
+    if (!rec) return;
+    ask({ title: "R\xFCckg\xE4ngig machen?", text: rec.label, ok: "R\xFCckg\xE4ngig machen" }).then((r) => {
+      if (r) undoAusfuehren(rec.id, false);
+    });
   });
   $("#qrZu").addEventListener("click", () => {
     $("#qrOverlay").hidden = true;
