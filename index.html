@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Kaffeekasse Wache</title>
+<title>Kaffeekasse Wache Nord, WA III</title>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Kaffeekasse">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -57,6 +57,11 @@ header.top{
 }
 header.top h1{ margin:0; font-size:1.25rem; letter-spacing:-.01em; }
 header.top h1 span{ color:var(--muted); font-weight:400; }
+.wache-banner{ display:flex; align-items:stretch; background:#B71C1C; color:#fff; border-radius:4px; overflow:hidden; box-shadow:inset 0 -3px 0 rgba(0,0,0,.18); }
+.wb-text{ padding:6px 14px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; font-size:.9rem; white-space:nowrap; display:flex; align-items:center; gap:10px; }
+.wb-trenn{ display:inline-block; width:2px; height:1.1em; background:rgba(255,255,255,.6); }
+.wb-streifen{ width:26px; background:repeating-linear-gradient(-45deg, #fff 0 6px, #B71C1C 6px 12px); }
+@media (max-width:560px){ .wache-banner{ order:3; width:100%; } .wb-text{ flex:1; justify-content:center; font-size:.8rem; } }
 nav.tabs{ display:flex; gap:4px; margin-left:auto; overflow-x:auto; }
 nav.tabs button{
   border:0; background:none; padding:8px 12px; border-radius:6px; color:var(--muted); white-space:nowrap;
@@ -180,6 +185,42 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .undo-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
 .undo-row .nm{ font-weight:700; }
 #undoOverlay{ z-index:25; }
+/* Flipchart */
+:root{ --fc-papier:#FDFDF8; --fc-raster:rgba(40,70,140,.07); --fc-schwarz:#22252A; --fc-blau:#1F45B5; --fc-rot:#C62828; --fc-gruen:#2E7D32; --fc-gelb:rgba(255,226,64,.65); --fc-leiste:#3A3F45; }
+.fc-wrap{ max-width:760px; margin:0 auto; }
+.fc-staffelei{ height:26px; background:var(--fc-leiste); border-radius:6px 6px 2px 2px; position:relative; margin:0 18px; box-shadow:0 2px 0 rgba(0,0,0,.25); }
+.fc-staffelei span{ position:absolute; top:14px; width:14px; height:22px; border:3px solid #9AA0A6; border-top:0; border-radius:0 0 8px 8px; z-index:2; }
+.fc-staffelei span:first-child{ left:30%; } .fc-staffelei span:last-child{ right:30%; }
+.fc-stapel{ position:relative; perspective:1600px; padding-bottom:6px; }
+.fc-stapel::before, .fc-stapel::after{ content:""; position:absolute; left:10px; right:10px; bottom:0; height:12px; background:var(--fc-papier); border:1px solid #D9D9CF; border-top:0; border-radius:0 0 4px 4px; }
+.fc-stapel::after{ left:16px; right:16px; bottom:-5px; }
+.fc-blatt{
+  position:relative; z-index:1; background-color:var(--fc-papier);
+  background-image:linear-gradient(var(--fc-raster) 1px, transparent 1px), linear-gradient(90deg, var(--fc-raster) 1px, transparent 1px);
+  background-size:28px 28px; border:1px solid #D9D9CF; border-radius:0 0 4px 4px;
+  min-height:440px; padding:34px 34px 26px; color:var(--fc-schwarz);
+  font-family:"Marker Felt","Chalkboard SE","Bradley Hand","Comic Sans MS","Segoe Print",cursive;
+  box-shadow:0 8px 22px rgba(0,0,0,.18); transform-origin:top center; backface-visibility:hidden;
+}
+.fc-blatt.weg{ animation:fcWeg .32s ease-in forwards; }
+.fc-blatt.her{ animation:fcHer .32s ease-out; }
+@keyframes fcWeg{ to{ transform:rotateX(-88deg); opacity:.4; } }
+@keyframes fcHer{ from{ transform:rotateX(70deg); opacity:.4; } to{ transform:none; opacity:1; } }
+.fc-nr{ position:absolute; top:12px; right:18px; font-size:1rem; color:var(--fc-blau); }
+.fc-blatt h2{ font-size:2.2rem; line-height:1.1; margin:0 0 4px; font-weight:700; }
+.fc-strich{ display:block; width:min(320px,80%); height:14px; margin-bottom:18px; }
+.fc-strich path{ fill:none; stroke-width:4; stroke-linecap:round; }
+.fc-blatt ul{ list-style:none; margin:0; padding:0; }
+.fc-blatt li{ position:relative; padding-left:38px; margin:0 0 14px; font-size:1.35rem; line-height:1.35; }
+.fc-blatt li::before{ content:"➜"; position:absolute; left:2px; top:0; color:var(--fc-rot); }
+.fc-blatt .hl{ background:linear-gradient(transparent 35%, var(--fc-gelb) 35%, var(--fc-gelb) 92%, transparent 92%); padding:0 3px; }
+.fc-notiz{ display:inline-block; margin-top:10px; padding:10px 16px; border:3px solid var(--fc-gruen); color:var(--fc-gruen); border-radius:14px 4px 16px 6px; font-size:1.2rem; transform:rotate(-1.2deg); }
+.fc-nav{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; }
+.fc-punkte{ display:flex; gap:7px; flex-wrap:wrap; justify-content:center; }
+.fc-punkte button{ width:13px; height:13px; border-radius:50%; border:2px solid var(--ink); background:transparent; padding:0; min-height:0; }
+.fc-punkte button[aria-current="true"]{ background:var(--ink); }
+@media (max-width:760px){ .fc-blatt{ padding:28px 18px 20px; min-height:380px; } .fc-blatt h2{ font-size:1.8rem; } .fc-blatt li{ font-size:1.15rem; padding-left:32px; } }
+@media (prefers-reduced-motion:reduce){ .fc-blatt.weg, .fc-blatt.her{ animation:none; } }
 .std-box{ text-align:left; }
 .std-row{ display:grid; grid-template-columns:1fr auto 40px auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
 .std-c{ text-align:center; font-weight:700; font-size:1.15rem; }
@@ -253,7 +294,8 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
 </head>
 <body>
 <header class="top">
-  <h1>Kaffeekasse <span>Wache</span></h1>
+  <h1>Kaffeekasse</h1>
+  <div class="wache-banner" aria-label="Wache Nord, Wachabteilung III"><span class="wb-streifen" aria-hidden="true"></span><span class="wb-text">Wache Nord <span class="wb-trenn" aria-hidden="true"></span> Wachabteilung III</span><span class="wb-streifen" aria-hidden="true"></span></div>
   <nav class="tabs" aria-label="Bereiche">
     <button data-tab="liste" aria-current="page">Liste</button>
     <button data-tab="broetchen">Küche</button>
@@ -263,6 +305,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     <button data-tab="besorg">Besorg mal</button>
     <button data-tab="bezahlen">PayPal</button>
     <button data-tab="sicherung">Sicherung</button>
+    <button data-tab="anleitung">Anleitung</button>
     <button id="undoBtn" title="Wichtige Aktionen rückgängig machen">↶ Rückgängig</button>
     <button id="fullscreen" title="Vollbild">⛶</button>
   </nav>
@@ -373,6 +416,20 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     </div>
   </section>
 
+  <section class="view" id="v-anleitung" hidden>
+    <div class="fc-wrap">
+      <div class="fc-staffelei" aria-hidden="true"><span></span><span></span></div>
+      <div class="fc-stapel">
+        <article class="fc-blatt" id="fcBlatt" aria-live="polite"></article>
+      </div>
+      <div class="fc-nav">
+        <button class="btn" id="fcZurueck" aria-label="Vorheriges Blatt">‹ Zurück</button>
+        <div class="fc-punkte" id="fcPunkte"></div>
+        <button class="btn primary" id="fcWeiter" aria-label="Nächstes Blatt">Weiter ›</button>
+      </div>
+    </div>
+  </section>
+
   <section class="view" id="v-sicherung" hidden>
     <div class="card">
       <h2>Sicherung</h2>
@@ -387,12 +444,12 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     </div>
     <div class="card">
       <h2>Tagesstände</h2>
-      <p class="muted">Jeden Abend um 23 Uhr speichert die App automatisch alle Kontostände und die Bestellungen des Tages. Die letzten 60 Tage bleiben erhalten. War die App um 23 Uhr geschlossen, wird der Tagesstand beim nächsten Öffnen nachgeholt. Hat sich jemand verbucht oder wurde versehentlich etwas gelöscht, kannst du hier einen früheren Stand zurückholen.</p>
+      <p class="muted">Jeden Abend um 23 Uhr speichert die App automatisch alle Kontostände und die Bestellungen des Tages, allerdings nur, wenn sich seit dem letzten Tagesstand etwas geändert hat. Freie Tage ohne Buchungen werden also übersprungen. Die letzten 60 Tagesstände bleiben erhalten. War die App um 23 Uhr geschlossen, wird der Tagesstand beim nächsten Öffnen nachgeholt. Hat sich jemand verbucht oder wurde versehentlich etwas gelöscht, kannst du hier einen früheren Stand zurückholen.</p>
       <div id="tsListe"></div>
     </div>
   </section>
 
-  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 b</p>
+  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 d</p>
 </main>
 
 <div class="overlay" id="stdOverlay" hidden>
@@ -1286,6 +1343,7 @@ var __objRest = (source, exclude) => {
     if (ui.tab === "sicherung") renderSicherung();
     if (ui.tab === "bezahlen") renderBezahlen();
     if (ui.tab === "ehre") renderEhre();
+    if (ui.tab === "anleitung" && !$("#fcBlatt").innerHTML) renderAnleitung(false);
     if (ui.tab === "broetchen") renderBroetchen();
     backupHinweis();
   }
@@ -1493,6 +1551,110 @@ var __objRest = (source, exclude) => {
     $("#lastBackup").textContent = lb ? "Letzte Sicherung: " + new Date(lb).toLocaleString("de-DE") : "Noch keine Sicherung gespeichert.";
     renderTagesstaende();
   }
+  const ANLEITUNG = [
+    {
+      t: "Buchen",
+      f: "blau",
+      p: [
+        "**Name** antippen, dann **Produkt** antippen = ein Strich.",
+        "Zweimal tippen = zwei Striche.",
+        "Vertippt? Bei der Person **\u201E\u22121\u201C** dr\xFCcken."
+      ],
+      n: "Rot = Schulden, Gr\xFCn = Guthaben"
+    },
+    { t: "\u201EWie immer\u201C", f: "gruen", p: [
+      "Bei deinem Namen **\u201E+ \u201AWie immer\u2018 festlegen\u201C**.",
+      "Mit + und \u2212 dein Fr\xFChst\xFCck zusammenstellen, speichern.",
+      "Ab jetzt: **ein Tipp** bucht alles auf einmal."
+    ] },
+    {
+      t: "K\xFCche",
+      f: "rot",
+      p: [
+        "Koch gibt unter K\xFCche den **Tagespreis** f\xFCr Abendessen und Kuchen ein.",
+        "Wer sich vorher eintr\xE4gt, bekommt **\u201EPreis folgt\u201C**. Der Preis wird nachgetragen.",
+        "Die **Br\xF6tchenliste** z\xE4hlt alles von heute. \u201EListe senden\u201C schickt sie per WhatsApp & Co.",
+        "Eier werden darunter gez\xE4hlt."
+      ],
+      n: "An die Verf\xFCger gedacht?"
+    },
+    { t: "Geld einzahlen", f: "gruen", p: [
+      "Bei der Person **\u201EEinzahlung\u201C** (PIN).",
+      "**\u201EAlle Schulden tilgen\u201C** = ein Klick, Konto auf 0.",
+      "PayPal? **\u201EPayPal-QR\u201C** zeigen, scannen lassen, dann als Einzahlung buchen."
+    ] },
+    { t: "Inkasso-Ecke", f: "rot", p: [
+      "Erscheint oben auf der Startseite.",
+      "Stammbesatzung ab **30 \u20AC Schulden**.",
+      "G\xE4ste ab **14 Tagen** im Minus.",
+      "Wer zahlt, verschwindet automatisch."
+    ] },
+    { t: "Personen", f: "blau", p: [
+      "**\u201E+ Person\u201C** f\xFCr die Stammbesatzung, **\u201E+ Gast\u201C** f\xFCr G\xE4ste.",
+      "Umbenennen und Gruppe wechseln bei der Person.",
+      "Entfernen nur mit PIN."
+    ] },
+    { t: "Dienst abschlie\xDFen", f: "schwarz", p: [
+      "Abends unter **\u201EDienst abschlie\xDFen\u201C** (PIN).",
+      "Alle Striche werden in die Kontost\xE4nde \xFCbernommen.",
+      "Vorher pr\xFCfen: **Abendessen-Preis** eingegeben?"
+    ] },
+    { t: "Fehler gemacht?", f: "rot", p: [
+      "Nach wichtigen Aktionen 30 Sekunden lang: **\u201ER\xFCckg\xE4ngig\u201C** unten.",
+      "Sp\xE4ter: oben **\u201E\u21B6 R\xFCckg\xE4ngig\u201C** (PIN).",
+      "Geht auch f\xFCr Abschluss, Korrektur und entfernte Personen."
+    ] },
+    { t: "PIN", f: "schwarz", p: [
+      "Gesch\xFCtzt: **Einzahlung, Korrektur, Entfernen, Abschluss, Produkte**.",
+      "Die PIN gibt es beim **Kassenwart**."
+    ] },
+    { t: "Sicherung", f: "blau", p: [
+      "Um **23 Uhr** speichert die App automatisch einen Tagesstand, wenn an dem Tag etwas gebucht wurde.",
+      "Einmal pro Woche: **\u201ESicherung speichern\u201C** und per Mail schicken.",
+      "Das iPad bitte immer am Strom lassen."
+    ] },
+    {
+      t: "Ehrentafel",
+      f: "gruen",
+      p: [
+        "Titel des Monats: Kaffee-Brandmeister, Eier-Baron & Co.",
+        "**Abzeichen** in Bronze, Silber und Gold.",
+        "Jahresstatistik der Wache zum Staunen."
+      ],
+      n: "Wer landet ganz oben?"
+    }
+  ];
+  const FC_FARBE = { blau: "var(--fc-blau)", rot: "var(--fc-rot)", gruen: "var(--fc-gruen)", schwarz: "var(--fc-schwarz)" };
+  let fcSeite = 0;
+  const fcText = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<span class="hl">$1</span>');
+  function renderAnleitung(anim) {
+    const s = ANLEITUNG[fcSeite], farbe = FC_FARBE[s.f] || FC_FARBE.blau;
+    const el = $("#fcBlatt");
+    const zeichnen = () => {
+      el.innerHTML = '<span class="fc-nr">'.concat(fcSeite + 1, " / ").concat(ANLEITUNG.length, '</span>\n      <h2 style="color:').concat(farbe, '">').concat(esc(s.t), '</h2>\n      <svg class="fc-strich" viewBox="0 0 320 14" preserveAspectRatio="none" aria-hidden="true"><path style="stroke:').concat(farbe, '" d="M3 9 C 60 3, 110 13, 170 7 S 270 4, 317 8"/></svg>\n      <ul>').concat(s.p.map((x) => "<li>".concat(fcText(x), "</li>")).join(""), "</ul>\n      ").concat(s.n ? '<div class="fc-notiz">'.concat(fcText(s.n), "</div>") : "");
+      $("#fcPunkte").innerHTML = ANLEITUNG.map((x, i) => '<button data-fc="'.concat(i, '" aria-label="Blatt ').concat(i + 1, ": ").concat(esc(x.t), '" aria-current="').concat(i === fcSeite, '"></button>')).join("");
+      $("#fcZurueck").disabled = fcSeite === 0;
+      $("#fcWeiter").textContent = fcSeite === ANLEITUNG.length - 1 ? "Von vorn \u203A" : "Weiter \u203A";
+    };
+    if (!anim) {
+      zeichnen();
+      return;
+    }
+    el.classList.remove("her");
+    el.classList.add("weg");
+    setTimeout(() => {
+      el.classList.remove("weg");
+      zeichnen();
+      void el.offsetWidth;
+      el.classList.add("her");
+    }, 300);
+  }
+  function fcBlaettern(n) {
+    const neu = n < 0 ? 0 : n >= ANLEITUNG.length ? 0 : n;
+    if (neu === fcSeite) return;
+    fcSeite = neu;
+    renderAnleitung(true);
+  }
   const PPKEY = "kk-paypal";
   function ppLaden() {
     try {
@@ -1613,10 +1775,16 @@ var __objRest = (source, exclude) => {
     });
     const kopie2 = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste }));
     const list = tsLaden().filter((x) => !(x.tag === tag && x.grund !== "vorher"));
-    list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie2 });
+    list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie2, fp: tsFingerabdruck() });
     list.sort((a, b) => a.ts - b.ts);
     while (list.length > TS_MAX) list.shift();
     return tsSpeichern(list);
+  }
+  function tsFingerabdruck() {
+    const s = JSON.stringify([S.personen, S.produkte, S.buchungen, S.liste, Object.keys(S.abschluesse).length]);
+    let h = 5381;
+    for (let i = 0; i < s.length; i++) h = (h << 5) + h + s.charCodeAt(i) | 0;
+    return s.length + "-" + (h >>> 0).toString(36);
   }
   function tsPruefen() {
     const jetzt = /* @__PURE__ */ new Date();
@@ -1627,9 +1795,23 @@ var __objRest = (source, exclude) => {
       return tagKey(g);
     })();
     const faellig = jetzt.getHours() >= TS_STUNDE ? heute2 : gestern;
-    const hat = tsLaden().some((x) => x.tag === faellig && x.grund !== "vorher");
-    if (hat) return;
+    const alle = tsLaden();
+    if (alle.some((x) => x.tag === faellig && x.grund !== "vorher")) return;
+    let geprueft = "";
+    try {
+      geprueft = localStorage.getItem("kk-ts-geprueft") || "";
+    } catch (e) {
+    }
+    if (geprueft === faellig) return;
     if (!Object.keys(S.personen).length) return;
+    const letzter = alle.filter((x) => x.grund !== "vorher").pop();
+    if (letzter && letzter.fp && letzter.fp === tsFingerabdruck()) {
+      try {
+        localStorage.setItem("kk-ts-geprueft", faellig);
+      } catch (e) {
+      }
+      return;
+    }
     const puenktlich = faellig === heute2;
     tsErstellen(faellig, puenktlich ? "auto" : "nachgeholt");
     if (ui.tab === "sicherung") renderTagesstaende();
@@ -2042,6 +2224,32 @@ var __objRest = (source, exclude) => {
       render();
     }, UNDO_TOAST);
   });
+  $("#fcWeiter").addEventListener("click", () => fcBlaettern(fcSeite + 1));
+  $("#fcZurueck").addEventListener("click", () => fcBlaettern(fcSeite - 1));
+  $("#fcPunkte").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fc]");
+    if (b) fcBlaettern(+b.dataset.fc);
+  });
+  (function() {
+    let x0 = null;
+    $("#fcBlatt").addEventListener("touchstart", (e) => {
+      x0 = e.touches[0].clientX;
+    }, { passive: true });
+    $("#fcBlatt").addEventListener("touchend", (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) > 50) {
+        if (dx < 0 && fcSeite < ANLEITUNG.length - 1) fcBlaettern(fcSeite + 1);
+        if (dx > 0) fcBlaettern(fcSeite - 1);
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (ui.tab !== "anleitung" || !$("#dlg").hidden) return;
+      if (e.key === "ArrowRight") fcBlaettern(fcSeite + 1);
+      if (e.key === "ArrowLeft") fcBlaettern(fcSeite - 1);
+    });
+  })();
   $("#undoBtn").addEventListener("click", () => {
     renderUndo();
     $("#undoOverlay").hidden = false;
