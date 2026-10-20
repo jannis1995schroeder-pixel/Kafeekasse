@@ -168,6 +168,38 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .qr-box .row{ display:flex; justify-content:center; margin-top:10px; }
 .qr-betrag{ font-size:1.6rem; font-weight:700; color:var(--debt); margin:4px 0; }
 .inkasso .pp-link{ margin-top:10px; }
+.wieimmer{ display:flex; gap:8px; align-items:stretch; margin-bottom:12px; flex-wrap:wrap; }
+.wi-main{ flex:1; min-width:220px; text-align:left; background:var(--ink-soft); border-color:var(--ink); padding:12px 14px; }
+.wi-main strong{ display:block; color:var(--ink); font-size:1.1rem; }
+.wi-main span{ display:block; color:var(--muted); font-size:.9rem; }
+.vf-box{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:space-between; }
+.vf-box .btn{ color:var(--text); font-weight:400; }
+.vf-step{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.vf-step .btn{ min-width:52px; font-size:1.3rem; }
+.vf-zahl{ font-size:2rem; font-weight:700; color:var(--ink); min-width:40px; text-align:center; }
+.std-box{ text-align:left; }
+.std-row{ display:grid; grid-template-columns:1fr auto 40px auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+.std-c{ text-align:center; font-weight:700; font-size:1.15rem; }
+.std-actions{ justify-content:flex-end !important; gap:8px; }
+.gastbadge.verf{ color:var(--debt); border-color:var(--debt); }
+#plist li.grp-verf{ color:var(--debt); }
+.ptoday.warn, .warn{ color:var(--debt); }
+.ok{ color:var(--credit); }
+.warnbox{ border:1px solid var(--debt); color:var(--debt); border-radius:6px; padding:8px 12px; margin:0 0 10px; font-weight:700; }
+.badges{ display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+.badge{ font-size:.85rem; border:1.5px solid var(--line); border-radius:999px; padding:3px 10px; background:var(--paper); white-space:nowrap; }
+.badge.lv0{ border-color:#B0793F; } .badge.lv1{ border-color:#9AA3AD; } .badge.lv2{ border-color:#D4A514; font-weight:700; }
+.badge.spez{ border-style:dashed; }
+.eh-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-top:8px; }
+.eh-card{ border:1px solid var(--line); border-top:4px solid var(--ink); border-radius:8px; padding:12px; background:var(--paper); }
+.eh-t{ font-size:.85rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.eh-n{ font-size:1.35rem; font-weight:700; margin:4px 0 2px; }
+.eh-v{ color:var(--ink); }
+.st-row{ display:flex; gap:14px; align-items:flex-start; padding:10px 0; border-bottom:1px solid var(--line); }
+.st-i{ font-size:1.8rem; line-height:1; }
+.st-h{ font-weight:700; font-size:1.15rem; }
+.abz-row{ padding:10px 0 2px; border-bottom:1px solid var(--line); }
+.abz-row .nm{ display:block; font-weight:700; margin-bottom:6px; }
 .hist summary{ cursor:pointer; padding:10px 0; border-bottom:1px solid var(--line); }
 .besorg{ list-style:none; margin:0; padding:0; }
 .besorg li{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
@@ -216,6 +248,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   <nav class="tabs" aria-label="Bereiche">
     <button data-tab="liste" aria-current="page">Liste</button>
     <button data-tab="broetchen">Küche</button>
+    <button data-tab="ehre">Ehrentafel</button>
     <button data-tab="abschluss">Dienst abschließen</button>
     <button data-tab="produkte">Produkte</button>
     <button data-tab="besorg">Besorg mal</button>
@@ -251,6 +284,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     <div class="card">
       <h2 id="brTitel">Brötchenliste</h2>
       <p class="muted">Alle Brötchen, die heute seit 0 Uhr gebucht wurden. Welche Produkte als Brötchen zählen, stellst du unter „Produkte“ ein.</p>
+      <div id="brWarn"></div>
       <div id="brListe"></div>
       <div class="actions">
         <button class="btn primary" id="brTeilen">Liste senden</button>
@@ -261,6 +295,22 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
       <h2>Heute gezählt</h2>
       <p class="muted">Weitere Produkte, die heute seit 0 Uhr gebucht wurden. Welche hier auftauchen, stellst du unter „Produkte“ mit dem Häkchen „Zählen“ ein.</p>
       <div id="zaListe"></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-ehre" hidden>
+    <div class="card">
+      <h2 id="ehTitel">Ehrentafel</h2>
+      <div id="ehTafel" class="eh-grid"></div>
+    </div>
+    <div class="card">
+      <h2 id="stTitel">Wachen-Statistik</h2>
+      <div id="stListe"></div>
+    </div>
+    <div class="card">
+      <h2>Abzeichen</h2>
+      <p class="muted">Gezählt wird alles seit Einführung der App. Bronze, Silber und Gold gibt es je nach Menge.</p>
+      <div id="abzListe"></div>
     </div>
   </section>
 
@@ -334,6 +384,18 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
 
   <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert.</p>
 </main>
+
+<div class="overlay" id="stdOverlay" hidden>
+  <div class="qr-box std-box" role="dialog" aria-modal="true" aria-labelledby="stdTitel">
+    <h2 id="stdTitel">Wie immer</h2>
+    <p class="muted">Lege fest, was normalerweise bestellt wird. Später reicht ein Tipp auf „Wie immer“.</p>
+    <div id="stdListe"></div>
+    <div class="row std-actions">
+      <button class="btn" data-stdact="abbrechen">Abbrechen</button>
+      <button class="btn primary" data-stdact="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
 
 <div class="overlay" id="qrOverlay" hidden>
   <div class="qr-box" role="dialog" aria-modal="true" aria-labelledby="qrTitel">
@@ -573,7 +635,7 @@ var __objRest = (source, exclude) => {
       $("#dlgText").hidden = !text;
       $("#dlgFields").innerHTML = fields.map((f, i) => {
         var _a;
-        return '\n      <label for="f'.concat(i, '">').concat(esc(f.label), '</label>\n      <input id="f').concat(i, '" ').concat(f.money ? 'inputmode="decimal"' : "", ' value="').concat(esc((_a = f.value) != null ? _a : ""), '" placeholder="').concat(esc(f.placeholder || ""), '" autocomplete="off">\n      ').concat(f.hint ? '<div class="hint">'.concat(esc(f.hint), "</div>") : "");
+        return '\n      <label for="f'.concat(i, '">').concat(esc(f.label), '</label>\n      <input id="f').concat(i, '" ').concat(f.money ? 'inputmode="decimal"' : "", " ").concat(f.pin ? 'type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8"' : "", ' value="').concat(esc((_a = f.value) != null ? _a : ""), '" placeholder="').concat(esc(f.placeholder || ""), '" autocomplete="off">\n      ').concat(f.hint ? '<div class="hint">'.concat(esc(f.hint), "</div>") : "");
       }).join("");
       const okBtn = $("#dlgOk");
       okBtn.textContent = ok;
@@ -630,6 +692,114 @@ var __objRest = (source, exclude) => {
   }
   const heuteKey = () => tagKey(/* @__PURE__ */ new Date());
   const tagesPreis = (p) => p && p.tagespreis && p.tagPreisDatum === heuteKey() && typeof p.tagPreis === "number" ? p.tagPreis : null;
+  const ADMIN_PIN = "1120";
+  let pinBis = 0;
+  async function pinPruefen(grund) {
+    if (Date.now() < pinBis) {
+      pinBis = Date.now() + 5 * 6e4;
+      return true;
+    }
+    const r = await ask({ title: "PIN erforderlich", text: grund, fields: [{ label: "PIN", pin: true }], ok: "Entsperren" });
+    if (!r) return false;
+    if (r[0].trim() === ADMIN_PIN) {
+      pinBis = Date.now() + 5 * 6e4;
+      return true;
+    }
+    toast("Falsche PIN.");
+    return false;
+  }
+  async function buchungAnlegen(pid, prod) {
+    const id = uid(), now = Date.now();
+    let data;
+    if (prod.tagespreis) {
+      const tp = tagesPreis(prod);
+      data = { personId: pid, produktId: prod.id, text: prod.name, betrag: tp === null ? 0 : -r2(tp), ts: now, art: "verbrauch", tagespreis: true, tag: heuteKey(), preisOffen: tp === null };
+    } else {
+      data = { personId: pid, produktId: prod.id, text: prod.name, betrag: -r2(prod.preis || 0), ts: now, art: "verbrauch" };
+    }
+    await store.set("buchungen", id, data);
+    return id;
+  }
+  const VFKEY = "kk-verfueger";
+  function vfHeute() {
+    try {
+      const o = JSON.parse(localStorage.getItem(VFKEY)) || {};
+      return o.tag === heuteKey() ? o : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function vfBestaetigen() {
+    try {
+      localStorage.setItem(VFKEY, JSON.stringify({ tag: heuteKey(), ok: true }));
+    } catch (e) {
+    }
+    render();
+  }
+  function standardText(p) {
+    const st = p.standard || {};
+    return produkte().filter((pr) => st[pr.id] > 0).map((pr) => (st[pr.id] > 1 ? st[pr.id] + "\xD7 " : "") + pr.name).join(", ");
+  }
+  function standardPreis(p) {
+    const st = p.standard || {};
+    return r2(produkte().filter((pr) => st[pr.id] > 0).reduce((s, pr) => s + st[pr.id] * (pr.tagespreis ? tagesPreis(pr) || 0 : pr.preis || 0), 0));
+  }
+  async function wieImmer(pid) {
+    const p = S.personen[pid];
+    if (!p || !p.standard) return;
+    const ids = [];
+    for (const pr of produkte()) {
+      const n = p.standard[pr.id] || 0;
+      for (let i = 0; i < n; i++) {
+        try {
+          ids.push(await buchungAnlegen(pid, pr));
+        } catch (e) {
+        }
+      }
+    }
+    if (!ids.length) {
+      toast("Im Standard-Fr\xFChst\xFCck ist nichts mehr hinterlegt.");
+      return;
+    }
+    toast("Wie immer f\xFCr ".concat(p.name, " gebucht"), () => ids.forEach((id) => store.del("buchungen", id).catch(() => {
+    })));
+  }
+  function standardBearbeiten(pid) {
+    const p = S.personen[pid];
+    if (!p) return;
+    const st = Object.assign({}, p.standard || {});
+    const prods = produkte().filter((pr) => !pr.variabel || pr.tagespreis);
+    const ov = $("#stdOverlay");
+    const zeichnen = () => {
+      $("#stdTitel").textContent = "Wie immer: " + p.name;
+      $("#stdListe").innerHTML = prods.map((pr) => '<div class="std-row">\n      <span class="std-n">'.concat(esc(pr.name), '</span>\n      <button class="btn small" data-std="').concat(esc(pr.id), '" data-d="-1" aria-label="Weniger ').concat(esc(pr.name), '" ').concat(st[pr.id] ? "" : "disabled", '>\u2212</button>\n      <span class="std-c num">').concat(st[pr.id] || 0, '</span>\n      <button class="btn small" data-std="').concat(esc(pr.id), '" data-d="1" aria-label="Mehr ').concat(esc(pr.name), '">+</button></div>')).join("");
+    };
+    zeichnen();
+    ov.hidden = false;
+    ov.onclick = async (e) => {
+      const b = e.target.closest("[data-std]");
+      if (b) {
+        const id = b.dataset.std;
+        st[id] = Math.max(0, (st[id] || 0) + +b.dataset.d);
+        if (!st[id]) delete st[id];
+        zeichnen();
+        return;
+      }
+      const a = e.target.closest("[data-stdact]");
+      if (!a && e.target !== ov) return;
+      const act = a ? a.dataset.stdact : "abbrechen";
+      if (act === "speichern") {
+        const neu = Object.assign({}, S.personen[pid]);
+        if (Object.keys(st).length) neu.standard = st;
+        else delete neu.standard;
+        await store.set("personen", pid, neu).catch(() => {
+        });
+        toast(Object.keys(st).length ? "Standard-Fr\xFChst\xFCck gespeichert" : "Standard-Fr\xFChst\xFCck gel\xF6scht");
+      }
+      ov.hidden = true;
+      ov.onclick = null;
+    };
+  }
   async function buchen(pid, prod) {
     var _a, _c;
     let betrag = prod.preis || 0, text = prod.name;
@@ -738,6 +908,7 @@ var __objRest = (source, exclude) => {
     }));
   }
   async function korrigieren(pid) {
+    if (!await pinPruefen("Kontost\xE4nde korrigieren ist gesch\xFCtzt.")) return;
     const st = stand(pid);
     const r = await ask({
       title: "Kontostand korrigieren",
@@ -785,6 +956,7 @@ var __objRest = (source, exclude) => {
     });
   }
   async function personLoeschen(pid) {
+    if (!await pinPruefen("Personen entfernen ist gesch\xFCtzt.")) return;
     const p = S.personen[pid];
     const st = stand(pid);
     const warn = Math.abs(st.neu) > 4e-3 ? " Achtung: Der Kontostand betr\xE4gt ".concat(money(st.neu), " und geht damit verloren.") : "";
@@ -800,6 +972,7 @@ var __objRest = (source, exclude) => {
     toast(p.name + " entfernt");
   }
   async function abschliessen() {
+    if (!await pinPruefen("Den Dienst abschlie\xDFen ist gesch\xFCtzt.")) return;
     const cutoff = Date.now();
     const list = persons().map((p) => {
       const items = offeneBuchungen(p.id).filter((b) => b.ts <= cutoff);
@@ -900,6 +1073,7 @@ var __objRest = (source, exclude) => {
     if (ui.tab === "besorg") renderBesorg();
     if (ui.tab === "sicherung") renderSicherung();
     if (ui.tab === "bezahlen") renderBezahlen();
+    if (ui.tab === "ehre") renderEhre();
     if (ui.tab === "broetchen") renderBroetchen();
     backupHinweis();
   }
@@ -945,7 +1119,7 @@ var __objRest = (source, exclude) => {
         namen[n] = (namen[n] || 0) + 1;
       });
       const wer = Object.keys(namen).sort((a, b) => a.localeCompare(b, "de")).map((n) => namen[n] > 1 ? namen[n] + "\xD7 " + n : n).join(", ");
-      return '<div class="tp-row">\n      <div><span class="nm">'.concat(esc(p.name), '</span><span class="wer">').concat(e.length ? e.length + " eingetragen: " + esc(wer) : "noch niemand eingetragen", '</span></div>\n      <div class="pr num ').concat(tp === null ? "fehlt" : "", '">').concat(tp === null ? "noch kein Preis" : money(tp), '</div>\n      <button class="btn ').concat(tp === null ? "primary" : "", '" data-tp="').concat(esc(p.id), '">').concat(tp === null ? "Preis eingeben" : "\xC4ndern", "</button>\n    </div>");
+      return '<div class="tp-row">\n      <div><span class="nm">'.concat(esc(p.name), '</span><span class="wer">').concat(e.length ? e.length + " eingetragen: " + esc(wer) : "noch niemand eingetragen", '</span>\n</div>\n      <div class="pr num ').concat(tp === null ? "fehlt" : "", '">').concat(tp === null ? "noch kein Preis" : money(tp), '</div>\n      <button class="btn ').concat(tp === null ? "primary" : "", '" data-tp="').concat(esc(p.id), '">').concat(tp === null ? "Preis eingeben" : "\xC4ndern", "</button>\n    </div>");
     }).join("") : '<p class="muted">Kein Produkt hat einen Tagespreis. Unter \u201EProdukte\u201C bei Abendessen oder Kuchen \u201ETagespreis\u201C ankreuzen.</p>';
   }
   function renderBroetchen() {
@@ -959,6 +1133,7 @@ var __objRest = (source, exclude) => {
     $("#brNamen").textContent = brNamen ? "Namen ausblenden" : "Namen anzeigen";
     $("#brNamen").setAttribute("aria-pressed", String(brNamen));
     $("#brTeilen").disabled = !gesamt;
+    $("#brWarn").innerHTML = vfHeute() ? "" : '<div class="warnbox vf-box"><span>An die Verf\xFCger gedacht? Falls heute jemand von zu Hause kommt: kurz fragen, was er m\xF6chte, und eintragen.</span><button class="btn small" id="vfOk">Ja, erledigt</button></div>';
     if (!rows.length) {
       $("#brListe").innerHTML = '<p class="muted">Kein Produkt ist als Br\xF6tchen markiert. Unter \u201EProdukte\u201C bei den Br\xF6tchensorten \u201EBr\xF6tchen\u201C ankreuzen.</p>';
       return;
@@ -973,6 +1148,133 @@ var __objRest = (source, exclude) => {
   function broetchenText() {
     const rows = broetchenHeute().filter((r) => r.n);
     return "Br\xF6tchen f\xFCr " + datumLang() + ":\n" + rows.map((r) => r.n + "\xD7 " + r.p.name).join("\n") + "\n\nInsgesamt: " + rows.reduce((s, r) => s + r.n, 0) + " Br\xF6tchen";
+  }
+  function kategorie(text) {
+    const t = String(text || "").toLowerCase().trim();
+    const pr = produkte().find((x) => (x.name || "").toLowerCase() === t);
+    if (pr && pr.broetchen) return "broetchen";
+    if (/kaffee/.test(t)) return "kaffee";
+    if (t === "ei") return "ei";
+    if (/abendessen/.test(t)) return "abendessen";
+    if (/kuchen/.test(t)) return "kuchen";
+    if (t === "eis" || /mars|snickers|duplo|hanuta|gummi/.test(t)) return "snack";
+    if (/cola|limo/.test(t)) return "getraenk";
+    return "sonst";
+  }
+  function verbrauchSeit(von) {
+    const pro = {}, gesamt = {};
+    let umsatz = 0;
+    const add = (name, text, n, euro) => {
+      const k = kategorie(text);
+      pro[name] = pro[name] || { buchungen: 0 };
+      pro[name][k] = (pro[name][k] || 0) + n;
+      pro[name].buchungen += n;
+      gesamt[k] = (gesamt[k] || 0) + n;
+      umsatz += euro;
+    };
+    Object.keys(S.abschluesse).forEach((id) => {
+      const a = S.abschluesse[id];
+      if (a.ts < von) return;
+      (a.eintraege || []).forEach((e) => (e.posten || []).forEach((x) => {
+        if (x.betrag < 0 && x.text !== "Korrektur") add(e.name, x.text, x.n, -x.betrag);
+      }));
+    });
+    Object.keys(S.buchungen).forEach((id) => {
+      const b = S.buchungen[id];
+      if (b.art !== "verbrauch" || (b.ts || 0) < von) return;
+      const p = S.personen[b.personId];
+      if (!p) return;
+      if ((b.ts || 0) <= (p.bisTs || 0)) return;
+      add(p.name, b.text, 1, -(b.betrag || 0));
+    });
+    return { pro, gesamt, umsatz: r2(umsatz) };
+  }
+  const ABZ = [
+    { k: "kaffee", icon: "\u2615", name: "Koffein-L\xF6schzug", stufen: [25, 100, 250] },
+    { k: "broetchen", icon: "\u{1F956}", name: "B\xE4ckers Liebling", stufen: [50, 200, 500] },
+    { k: "ei", icon: "\u{1F95A}", name: "Eier-Baron", stufen: [25, 100, 250] },
+    { k: "abendessen", icon: "\u{1F35D}", name: "Feinschmecker", stufen: [10, 50, 150] },
+    { k: "snack", icon: "\u{1F36B}", name: "Naschkatze", stufen: [25, 100, 250] },
+    { k: "buchungen", icon: "\u{1F9FE}", name: "Stammkunde", stufen: [100, 500, 1e3] }
+  ];
+  const STUFE = ["Bronze", "Silber", "Gold"];
+  let statCache = null, statCacheKey = "";
+  function lebenszeit() {
+    const key = Object.keys(S.abschluesse).length + "|" + Object.keys(S.buchungen).length;
+    if (statCache && key === statCacheKey) return statCache;
+    statCacheKey = key;
+    statCache = verbrauchSeit(0);
+    return statCache;
+  }
+  function abzeichen(p) {
+    const d = lebenszeit().pro[p.name] || {};
+    const out = [];
+    ABZ.forEach((a) => {
+      const n = d[a.k] || 0;
+      let lv = -1;
+      a.stufen.forEach((s, i) => {
+        if (n >= s) lv = i;
+      });
+      if (lv >= 0) out.push({ icon: a.icon, name: a.name, stufe: lv, info: n + "\xD7" });
+    });
+    const neu = stand(p.id).neu;
+    if (neu >= 20) out.push({ icon: "\u{1F437}", name: "Sparschwein", stufe: -1, info: "Guthaben " + money(neu) });
+    if (inkassoListe().some((x) => x.p.id === p.id)) out.push({ icon: "\u{1F6A8}", name: "Inkasso-Prominenz", stufe: -1, info: "steht in der Inkasso-Ecke" });
+    return out;
+  }
+  function badgeHtml(b) {
+    return '<span class="badge '.concat(b.stufe >= 0 ? "lv" + b.stufe : "spez", '" title="').concat(esc(b.info), '"><span aria-hidden="true">').concat(b.icon, "</span> ").concat(esc(b.name)).concat(b.stufe >= 0 ? " " + STUFE[b.stufe] : "", "</span>");
+  }
+  function abzeichenHtml(p) {
+    const l = abzeichen(p);
+    return l.length ? '<div class="badges">'.concat(l.map(badgeHtml).join(""), "</div>") : "";
+  }
+  const zahl = (v, d) => v.toLocaleString("de-DE", { maximumFractionDigits: d || 0 });
+  function renderEhre() {
+    const jetzt = /* @__PURE__ */ new Date();
+    const mStart = new Date(jetzt.getFullYear(), jetzt.getMonth(), 1).getTime();
+    const jStart = new Date(jetzt.getFullYear(), 0, 1).getTime();
+    const monat = jetzt.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+    const m = verbrauchSeit(mStart);
+    const titel = [
+      { k: "kaffee", t: "Kaffee-Brandmeister", e: "Kaffeeflats" },
+      { k: "broetchen", t: "B\xE4ckers Liebling", e: "Br\xF6tchen" },
+      { k: "ei", t: "Eier-Baron", e: "Eier" },
+      { k: "snack", t: "Snack-Maschinist", e: "Snacks" },
+      { k: "abendessen", t: "Abendbrot-Abonnent", e: "Abendessen" }
+    ];
+    $("#ehTitel").textContent = "Ehrentafel " + monat;
+    const karten = titel.map((t) => {
+      let best = 0, namen = [];
+      Object.keys(m.pro).forEach((n) => {
+        const v = m.pro[n][t.k] || 0;
+        if (v > best) {
+          best = v;
+          namen = [n];
+        } else if (v === best && v > 0) namen.push(n);
+      });
+      return '<div class="eh-card"><div class="eh-t">'.concat(esc(t.t), '</div><div class="eh-n">').concat(best ? esc(namen.join(" & ")) : "noch frei", '</div><div class="eh-v num">').concat(best ? best + " " + t.e : "Wer will?", "</div></div>");
+    });
+    let spar = null;
+    persons().forEach((p) => {
+      const v = stand(p.id).neu;
+      if (v > 4e-3 && (!spar || v > spar.v)) spar = { n: p.name, v };
+    });
+    karten.push('<div class="eh-card"><div class="eh-t">Sparschwein der Wache</div><div class="eh-n">'.concat(spar ? esc(spar.n) : "noch frei", '</div><div class="eh-v num">').concat(spar ? money(spar.v) + " Guthaben" : "Keiner im Plus", "</div></div>"));
+    $("#ehTafel").innerHTML = karten.join("");
+    const j = verbrauchSeit(jStart), g = j.gesamt;
+    $("#stTitel").textContent = "Wachen-Statistik " + jetzt.getFullYear();
+    const zeilen = [
+      ["\u2615", (g.kaffee || 0) + " Kaffeeflats", "Bei gesch\xE4tzt 4 Tassen pro Flat etwa ".concat(zahl((g.kaffee || 0) * 0.8), " Liter Kaffee.")],
+      ["\u{1F956}", (g.broetchen || 0) + " Br\xF6tchen", "Aufeinandergestapelt etwa ".concat(zahl((g.broetchen || 0) * 0.07, 1), " Meter hoch.")],
+      ["\u{1F95A}", (g.ei || 0) + " Eier", "Daf\xFCr braucht ein flei\xDFiges Huhn etwa ".concat(zahl((g.ei || 0) / 300, 1), " Jahre.")],
+      ["\u{1F35D}", (g.abendessen || 0) + " Abendessen", "Das sind ".concat(zahl((g.abendessen || 0) / 8, 1), " volle Tische \xE0 8 Personen.")],
+      ["\u{1F36B}", (g.snack || 0) + " Snacks", "Rund ".concat(zahl((g.snack || 0) * 220), " kcal, abtrainiert in etwa ").concat(zahl((g.snack || 0) * 220 / 60), " km Joggen.")],
+      ["\u{1F4B6}", money(j.umsatz) + " Umsatz", "Danke an alle, die p\xFCnktlich zahlen!"]
+    ];
+    $("#stListe").innerHTML = zeilen.map((z) => '<div class="st-row"><span class="st-i" aria-hidden="true">'.concat(z[0], '</span><div><div class="st-h num">').concat(esc(z[1]), '</div><div class="muted">').concat(esc(z[2]), "</div></div></div>")).join("");
+    const mit = persons().map((p) => ({ p, l: abzeichen(p) })).filter((x) => x.l.length);
+    $("#abzListe").innerHTML = mit.length ? mit.map((x) => '<div class="abz-row"><span class="nm">'.concat(esc(x.p.name), '</span><div class="badges">').concat(x.l.map(badgeHtml).join(""), "</div></div>")).join("") : '<p class="muted">Noch hat niemand ein Abzeichen. Das erste gibt es z. B. nach 25 Eiern.</p>';
   }
   function renderSicherung() {
     const lb = lastBackup();
@@ -1133,6 +1435,7 @@ var __objRest = (source, exclude) => {
   async function tsWiederherstellen(id) {
     const x = tsLaden().find((t) => t.id === id);
     if (!x) return;
+    if (!await pinPruefen("Einen alten Stand wiederherstellen ist gesch\xFCtzt.")) return;
     const r = await ask({
       title: "Stand wiederherstellen?",
       danger: true,
@@ -1257,7 +1560,7 @@ var __objRest = (source, exclude) => {
       m[k].ids.push(b.id);
       return m;
     }, {}));
-    el.innerHTML = '\n    <div class="phead">\n      <button class="btn small back" data-act="back">\u2039 Liste</button>\n      <h2>'.concat(esc(p.name)).concat(p.gast ? '<span class="gastbadge">Gast</span>' : "", '</h2>\n      <div class="saldo">\n        <div class="big num ').concat(cls(st.neu), '">').concat(money(st.neu), '</div>\n        <div class="lbl">').concat(st.neu < -4e-3 ? "Schulden" : st.neu > 4e-3 ? "Guthaben" : "ausgeglichen").concat(st.items.length ? ", \xDCbertrag ".concat(money(st.alt)) : "", "</div>\n      </div>\n    </div>\n    ").concat(prods.length ? '<div class="prod-grid">'.concat(prods.map((pr) => '\n      <button class="prod" data-id="'.concat(esc(pr.id), '">\n        ').concat(counts[pr.id] ? '<span class="cnt">'.concat(tally(counts[pr.id]), "</span>") : "", '\n        <span class="pn">').concat(esc(pr.name), '</span>\n        <span class="pp num">').concat(pr.tagespreis ? tagesPreis(pr) !== null ? money(tagesPreis(pr)) + " heute" : "Preis folgt" : pr.variabel ? pr.preis ? "ca. " + money(pr.preis) : "Betrag eingeben" : money(pr.preis || 0), "</span>\n      </button>")).join(""), "</div>") : '<p class="muted">Noch keine Produkte. <button class="btn small" data-act="toProd">Produkte anlegen</button></p>', "\n    <h3>Seit dem letzten Abschluss</h3>\n    ").concat(grouped.length ? '<ul class="today">'.concat(grouped.map((g) => "\n      <li><span>".concat(esc(g.text), '</span>\n        <span class="tl">').concat(g.art === "verbrauch" ? tally(g.n) : "", '</span>\n        <span class="num ').concat(g.offen ? "muted" : cls(g.betrag), '">').concat(g.offen ? "Preis folgt" : money(g.betrag), '</span>\n        <button class="btn small" data-rm="').concat(esc(g.ids[g.ids.length - 1]), '" aria-label="Einmal ').concat(esc(g.text), ' entfernen">\u22121</button></li>')).join(""), '\n      <li><span class="sum">Summe</span><span></span><span class="num sum ').concat(cls(st.umsatz), '">').concat(money(st.umsatz), "</span><span></span></li></ul>") : '<p class="muted">Noch nichts gebucht.</p>', '\n    <div class="actions">\n      <button class="btn" data-act="einzahlen">Einzahlung</button>\n      ').concat(ppLaden().bild ? '<button class="btn" data-act="paypal">PayPal-QR</button>' : "", '\n      <button class="btn" data-act="korrektur">Kontostand korrigieren</button>\n      <button class="btn" data-act="rename">Umbenennen</button>\n      <button class="btn" data-act="gruppe">').concat(p.gast ? "Zur Stammbesatzung verschieben" : "Zu den G\xE4sten verschieben", '</button>\n      <button class="btn danger" data-act="delete">Entfernen</button>\n    </div>');
+    el.innerHTML = '\n    <div class="phead">\n      <button class="btn small back" data-act="back">\u2039 Liste</button>\n      <h2>'.concat(esc(p.name)).concat(p.gast ? '<span class="gastbadge">Gast</span>' : "", '</h2>\n      <div class="saldo">\n        <div class="big num ').concat(cls(st.neu), '">').concat(money(st.neu), '</div>\n        <div class="lbl">').concat(st.neu < -4e-3 ? "Schulden" : st.neu > 4e-3 ? "Guthaben" : "ausgeglichen").concat(st.items.length ? ", \xDCbertrag ".concat(money(st.alt)) : "", "</div>\n      </div>\n    </div>\n    ").concat(abzeichenHtml(p), '\n    <div class="wieimmer">').concat(p.standard && standardText(p) ? '<button class="btn wi-main" data-act="wieimmer"><strong>Wie immer</strong><span>'.concat(esc(standardText(p)), ", ").concat(money(standardPreis(p)), '</span></button>\n         <button class="btn small" data-act="stdedit">\xC4ndern</button>') : '<button class="btn" data-act="stdedit">+ \u201EWie immer\u201C festlegen</button>', "</div>\n    ").concat(prods.length ? '<div class="prod-grid">'.concat(prods.map((pr) => '\n      <button class="prod" data-id="'.concat(esc(pr.id), '">\n        ').concat(counts[pr.id] ? '<span class="cnt">'.concat(tally(counts[pr.id]), "</span>") : "", '\n        <span class="pn">').concat(esc(pr.name), '</span>\n        <span class="pp num">').concat(pr.tagespreis ? tagesPreis(pr) !== null ? money(tagesPreis(pr)) + " heute" : "Preis folgt" : pr.variabel ? pr.preis ? "ca. " + money(pr.preis) : "Betrag eingeben" : money(pr.preis || 0), "</span>\n      </button>")).join(""), "</div>") : '<p class="muted">Noch keine Produkte. <button class="btn small" data-act="toProd">Produkte anlegen</button></p>', "\n    <h3>Seit dem letzten Abschluss</h3>\n    ").concat(grouped.length ? '<ul class="today">'.concat(grouped.map((g) => "\n      <li><span>".concat(esc(g.text), '</span>\n        <span class="tl">').concat(g.art === "verbrauch" ? tally(g.n) : "", '</span>\n        <span class="num ').concat(g.offen ? "muted" : cls(g.betrag), '">').concat(g.offen ? "Preis folgt" : money(g.betrag), '</span>\n        <button class="btn small" data-rm="').concat(esc(g.ids[g.ids.length - 1]), '" aria-label="Einmal ').concat(esc(g.text), ' entfernen">\u22121</button></li>')).join(""), '\n      <li><span class="sum">Summe</span><span></span><span class="num sum ').concat(cls(st.umsatz), '">').concat(money(st.umsatz), "</span><span></span></li></ul>") : '<p class="muted">Noch nichts gebucht.</p>', '\n    <div class="actions">\n      <button class="btn" data-act="einzahlen">Einzahlung</button>\n      ').concat(ppLaden().bild ? '<button class="btn" data-act="paypal">PayPal-QR</button>' : "", '\n      <button class="btn" data-act="korrektur">Kontostand korrigieren</button>\n      <button class="btn" data-act="rename">Umbenennen</button>\n      <button class="btn" data-act="gruppe">').concat(p.gast ? "Zur Stammbesatzung verschieben" : "Zu den G\xE4sten verschieben", '</button>\n      <button class="btn danger" data-act="delete">Entfernen</button>\n    </div>');
   }
   function renderAbschluss() {
     const rows = persons().map((p) => ({ p, st: stand(p.id) }));
@@ -1282,7 +1585,8 @@ var __objRest = (source, exclude) => {
     const items = Object.entries(S.liste).map(([id, x]) => __spreadValues({ id }, x)).sort((a, b) => a.ts - b.ts);
     $("#besorgList").innerHTML = items.length ? items.map((x) => "<li><span>".concat(esc(x.text), '</span><button class="btn small" data-bdel="').concat(esc(x.id), '">Erledigt</button></li>')).join("") : '<li class="muted">Nichts zu besorgen.</li>';
   }
-  document.querySelectorAll("nav.tabs button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("nav.tabs button[data-tab]").forEach((b) => b.addEventListener("click", async () => {
+    if (b.dataset.tab === "produkte" && ui.tab !== "produkte" && !await pinPruefen("Produkte und Preise \xE4ndern ist gesch\xFCtzt.")) return;
     ui.tab = b.dataset.tab;
     render();
     window.scrollTo(0, 0);
@@ -1339,6 +1643,8 @@ var __objRest = (source, exclude) => {
     }
     if (act === "einzahlen") einzahlen(pid);
     if (act === "paypal") qrZeigen(pid);
+    if (act === "wieimmer") wieImmer(pid);
+    if (act === "stdedit") standardBearbeiten(pid);
     if (act === "korrektur") korrigieren(pid);
     if (act === "rename") personUmbenennen(pid);
     if (act === "gruppe") {
@@ -1460,6 +1766,7 @@ var __objRest = (source, exclude) => {
         toast("Die Datei ist keine Kaffeekassen-Sicherung.");
         return;
       }
+      if (!await pinPruefen("Eine Sicherung laden ist gesch\xFCtzt.")) return;
       const r = await ask({ title: "Sicherung laden?", text: "Alle aktuellen Daten auf diesem Tablet werden durch die Sicherung vom " + new Date(o.ts).toLocaleString("de-DE") + " ersetzt.", ok: "Ersetzen", danger: true });
       if (!r) return;
       COLLS.forEach((c) => {
@@ -1524,6 +1831,9 @@ var __objRest = (source, exclude) => {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) tsPruefen();
   });
+  $("#brWarn").addEventListener("click", (e) => {
+    if (e.target.closest("#vfOk")) vfBestaetigen();
+  });
   $("#tpListe").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tp]");
     if (b) tagespreisSetzen(b.dataset.tp);
@@ -1533,6 +1843,11 @@ var __objRest = (source, exclude) => {
     renderBroetchen();
   });
   $("#brTeilen").addEventListener("click", async () => {
+    if (!vfHeute()) {
+      const r = await ask({ title: "An die Verf\xFCger gedacht?", text: "Falls heute jemand von zu Hause kommt: kurz fragen, was er m\xF6chte, und eintragen, bevor die Liste rausgeht.", ok: "Ja, Liste senden" });
+      if (!r) return;
+      vfBestaetigen();
+    }
     const text = broetchenText();
     try {
       if (navigator.share) {
