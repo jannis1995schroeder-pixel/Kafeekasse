@@ -203,6 +203,16 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .vf-step{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .vf-step .btn{ min-width:52px; font-size:1.3rem; }
 .vf-zahl{ font-size:2rem; font-weight:700; color:var(--ink); min-width:40px; text-align:center; }
+.aus-grid{ display:grid; gap:8px; }
+.aus-kat{ text-align:left; border:1.5px solid var(--line); background:var(--paper); border-radius:8px; padding:10px 14px; min-height:52px; color:var(--text); }
+.aus-kat strong{ display:block; font-size:1.05rem; }
+.aus-kat span{ display:block; font-size:.88rem; color:var(--muted); }
+.aus-kat.an{ border-color:var(--ink); background:var(--ink-soft); box-shadow:inset 0 0 0 1px var(--ink); }
+.aus-kat.an strong::after{ content:" ✓"; color:var(--ink); }
+.aus-kat:disabled{ opacity:.55; }
+.aus-btn{ border-color:var(--credit); color:var(--credit); font-weight:700; }
+.aus-box{ border:1px solid var(--credit); color:var(--credit); border-radius:6px; padding:8px 12px; margin:0 0 10px; }
+.aus-hinweis{ color:var(--credit) !important; }
 .undo-row{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
 .undo-row .nm{ font-weight:700; }
 #undoOverlay{ z-index:25; }
@@ -361,6 +371,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     <div class="card">
       <h2 id="brTitel">Brötchenliste</h2>
       <p class="muted">Alle Brötchen, die heute seit 0 Uhr gebucht wurden. Welche Produkte als Brötchen zählen, stellst du unter „Produkte“ ein.</p>
+      <div id="brAus"></div>
       <div id="brWarn"></div>
       <div id="brListe"></div>
       <div class="actions">
@@ -473,7 +484,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     </div>
   </section>
 
-  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 g</p>
+  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 i</p>
 </main>
 
 <div class="overlay" id="stdOverlay" hidden>
@@ -484,6 +495,23 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     <div class="row std-actions">
       <button class="btn" data-stdact="abbrechen">Abbrechen</button>
       <button class="btn primary" data-stdact="speichern">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ausOverlay" hidden>
+  <div class="qr-box std-box" role="dialog" aria-modal="true" aria-labelledby="ausTitel">
+    <h2 id="ausTitel">Einen ausgeben</h2>
+    <p class="muted">1. Was wird ausgegeben? Mehrfachauswahl möglich. Gilt für heute, auch für alle, die sich später noch eintragen.</p>
+    <div id="ausKat" class="aus-grid"></div>
+    <p class="muted" style="margin-top:14px">2. Wie?</p>
+    <div id="ausArt" class="aus-grid">
+      <button type="button" class="aus-kat" data-art="mitgebracht"><strong>Selbst mitgebracht</strong><span>Es kostet niemanden etwas, auch den Ausgebenden nicht.</span></button>
+      <button type="button" class="aus-kat" data-art="uebernommen"><strong>Kosten übernehmen</strong><span>Alle anderen zahlen nichts, die Summe geht auf den Ausgebenden.</span></button>
+    </div>
+    <div class="row std-actions">
+      <button class="btn" id="ausAbbrechen">Abbrechen</button>
+      <button class="btn primary" id="ausOk" disabled>Ausgeben</button>
     </div>
   </div>
 </div>
@@ -555,8 +583,8 @@ var __objRest = (source, exclude) => {
 };
 (function() {
   "use strict";
-  const COLLS = ["personen", "produkte", "buchungen", "abschluesse", "liste"];
-  const S = { personen: {}, produkte: {}, buchungen: {}, abschluesse: {}, liste: {} };
+  const COLLS = ["personen", "produkte", "buchungen", "abschluesse", "liste", "ausgaben"];
+  const S = { personen: {}, produkte: {}, buchungen: {}, abschluesse: {}, liste: {}, ausgaben: {} };
   const ui = { tab: "liste", sel: null, filter: "" };
   let store = null;
   const LSKEY = "kaffeekasse-v1";
@@ -901,6 +929,44 @@ var __objRest = (source, exclude) => {
         }
         for (const bid of Object.keys(d.buchungen)) if (S.buchungen[bid]) await store.set("buchungen", bid, Object.assign({}, S.buchungen[bid], d.buchungen[bid]));
       }
+      if (rec.typ === "ausgabe") {
+        for (const mid of d.mirrors) if (S.buchungen[mid]) await store.del("buchungen", mid);
+        for (const bid of Object.keys(d.vorher)) {
+          if (!S.buchungen[bid]) continue;
+          const alt = Object.assign({}, d.vorher[bid]), pr = S.produkte[alt.produktId] || {};
+          if (alt.tagespreis && pr.tagPreisDatum === alt.tag && typeof pr.tagPreis === "number") {
+            alt.betrag = -r2(pr.tagPreis);
+            alt.preisOffen = false;
+          }
+          await store.set("buchungen", bid, alt);
+        }
+        for (const did of d.docs) {
+          const a = S.ausgaben[did];
+          if (a) {
+            for (const bid of Object.keys(S.buchungen)) {
+              const b = S.buchungen[bid];
+              if (!b) continue;
+              if (b.fuer && S.buchungen[b.fuer] && S.buchungen[b.fuer].ausgegebenVon === a.giverId && katVon(S.produkte[b.produktId]) === a.kat && tagKey(new Date(S.buchungen[b.fuer].ts)) === a.tag) await store.del("buchungen", bid);
+            }
+            for (const bid of Object.keys(S.buchungen)) {
+              const b = S.buchungen[bid];
+              if (b && b.ausgegeben && b.ausgegebenVon === a.giverId && katVon(S.produkte[b.produktId]) === a.kat && tagKey(new Date(b.ts)) === a.tag) {
+                const pr = S.produkte[b.produktId] || {};
+                const neu = Object.assign({}, b);
+                delete neu.ausgegeben;
+                delete neu.ausgegebenVon;
+                if (neu.tagespreis) {
+                  const tp = tagesPreis(pr);
+                  neu.betrag = tp === null ? 0 : -r2(tp);
+                  neu.preisOffen = tp === null;
+                } else neu.betrag = -r2(pr.preis || 0);
+                await store.set("buchungen", bid, neu);
+              }
+            }
+            await store.del("ausgaben", did);
+          }
+        }
+      }
       if (rec.typ === "voll") {
         const v = JSON.parse(localStorage.getItem(UNDOVOLL));
         COLLS.forEach((c) => {
@@ -964,6 +1030,7 @@ var __objRest = (source, exclude) => {
       data = { personId: pid, produktId: prod.id, text: prod.name, betrag: -r2(prod.preis || 0), ts: now, art: "verbrauch" };
     }
     await store.set("buchungen", id, data);
+    await ausgabeAnwenden(id);
     return id;
   }
   const VFKEY = "kk-verfueger";
@@ -1007,7 +1074,7 @@ var __objRest = (source, exclude) => {
       toast("Im Standard-Fr\xFChst\xFCck ist nichts mehr hinterlegt.");
       return;
     }
-    toast("Wie immer f\xFCr ".concat(p.name, " gebucht"), () => ids.forEach((id) => store.del("buchungen", id).catch(() => {
+    toast("Wie immer f\xFCr ".concat(p.name, " gebucht"), () => ids.forEach((id) => buchungLoeschen(id).catch(() => {
     })));
   }
   function standardBearbeiten(pid) {
@@ -1053,7 +1120,7 @@ var __objRest = (source, exclude) => {
     };
   }
   async function buchen(pid, prod) {
-    var _a, _c;
+    var _a;
     let betrag = prod.preis || 0, text = prod.name;
     if (prod.tagespreis) {
       const tp = tagesPreis(prod);
@@ -1063,8 +1130,10 @@ var __objRest = (source, exclude) => {
       } catch (e) {
         return;
       }
+      await ausgabeAnwenden(id2);
       flashBtn(prod.id);
-      toast(tp === null ? "".concat(text, " f\xFCr ").concat(S.personen[pid] ? S.personen[pid].name : "", " eingetragen, Preis folgt") : "".concat(text, " f\xFCr ").concat(S.personen[pid] ? S.personen[pid].name : "", " gebucht"), () => store.del("buchungen", id2).catch(() => {
+      const ag = S.buchungen[id2] && S.buchungen[id2].ausgegeben;
+      toast(ag ? "".concat(text, " f\xFCr ").concat(nameVon(pid), " eingetragen, heute ausgegeben") : tp === null ? "".concat(text, " f\xFCr ").concat(nameVon(pid), " eingetragen, Preis folgt") : "".concat(text, " f\xFCr ").concat(nameVon(pid), " gebucht"), () => buchungLoeschen(id2).catch(() => {
       }));
       return;
     }
@@ -1097,9 +1166,147 @@ var __objRest = (source, exclude) => {
     } catch (e) {
       return;
     }
+    await ausgabeAnwenden(id);
     flashBtn(prod.id);
-    toast("".concat(text, " f\xFCr ").concat(((_c = S.personen[pid]) == null ? void 0 : _c.name) || "", " gebucht"), () => store.del("buchungen", id).catch(() => {
+    toast("".concat(text, " f\xFCr ").concat(nameVon(pid), " ").concat(S.buchungen[id] && S.buchungen[id].ausgegeben ? "eingetragen, heute ausgegeben" : "gebucht"), () => buchungLoeschen(id).catch(() => {
     }));
+  }
+  const AUS_KAT = { fruehstueck: "Fr\xFChst\xFCck", kuchen: "Kuchen", abendessen: "Abendessen" };
+  function katVon(prod) {
+    if (!prod) return null;
+    const n = String(prod.name || "").toLowerCase();
+    if (/abendessen/.test(n)) return "abendessen";
+    if (/kuchen/.test(n)) return "kuchen";
+    if (prod.broetchen || n === "ei") return "fruehstueck";
+    return null;
+  }
+  function ausgabeHeute(kat) {
+    const t = heuteKey(), id = t + "_" + kat;
+    return S.ausgaben[id] ? Object.assign({ id }, S.ausgaben[id]) : null;
+  }
+  const nameVon = (pid) => S.personen[pid] ? S.personen[pid].name : "jemandem";
+  function ausgabeTreffer(kat, giver) {
+    const t = heuteKey();
+    return Object.keys(S.buchungen).map((id) => Object.assign({ id }, S.buchungen[id])).filter((b) => {
+      if (b.art !== "verbrauch" || b.ausgegeben) return false;
+      if (tagKey(new Date(b.ts)) !== t) return false;
+      const p = S.personen[b.personId];
+      if (!p || (b.ts || 0) <= (p.bisTs || 0)) return false;
+      return katVon(S.produkte[b.produktId]) === kat;
+    });
+  }
+  async function ausgabeAufBuchung(b, art, giver, undoSammler) {
+    const id = b.id, alt = Object.assign({}, S.buchungen[id]);
+    if (art === "uebernommen" && b.personId === giver) return;
+    const neu = Object.assign({}, alt, { betrag: 0, preisOffen: false, ausgegeben: art, ausgegebenVon: giver });
+    await store.set("buchungen", id, neu);
+    if (undoSammler) undoSammler.vorher[id] = alt;
+    if (art === "uebernommen") {
+      const mid = uid();
+      const m = { personId: giver, produktId: alt.produktId, text: "Ausgegeben: " + alt.text, betrag: alt.betrag, ts: Date.now(), art: "uebernahme", fuer: id };
+      if (alt.tagespreis) {
+        m.tagespreis = true;
+        m.tag = alt.tag;
+        m.preisOffen = !!alt.preisOffen;
+      }
+      await store.set("buchungen", mid, m);
+      if (undoSammler) undoSammler.mirrors.push(mid);
+    }
+  }
+  async function ausgabeAnwenden(id) {
+    const b = S.buchungen[id];
+    if (!b || b.art !== "verbrauch") return;
+    const kat = katVon(S.produkte[b.produktId]);
+    if (!kat) return;
+    const a = ausgabeHeute(kat);
+    if (!a) return;
+    try {
+      await ausgabeAufBuchung(Object.assign({ id }, b), a.art, a.giverId, null);
+    } catch (e) {
+    }
+  }
+  async function buchungLoeschen(id) {
+    const b = S.buchungen[id];
+    const weg = {};
+    if (b) weg[id] = Object.assign({}, b);
+    Object.keys(S.buchungen).forEach((k) => {
+      if (S.buchungen[k].fuer === id) weg[k] = Object.assign({}, S.buchungen[k]);
+    });
+    for (const k of Object.keys(weg)) await store.del("buchungen", k);
+    return () => {
+      Object.keys(weg).forEach((k) => store.set("buchungen", k, weg[k]).catch(() => {
+      }));
+    };
+  }
+  function ausgebenDialog(pid) {
+    const p = S.personen[pid];
+    if (!p) return;
+    const ov = $("#ausOverlay");
+    const wahl = {};
+    let art = null;
+    const zeichnen = () => {
+      $("#ausTitel").textContent = p.name + " gibt einen aus";
+      $("#ausKat").innerHTML = Object.keys(AUS_KAT).map((k) => {
+        const a = ausgabeHeute(k);
+        const tr = ausgabeTreffer(k, pid);
+        const summe = r2(tr.reduce((s, b) => s - (b.betrag || 0), 0));
+        const offen = tr.some((b) => b.preisOffen);
+        const info = a ? "heute schon ausgegeben von " + nameVon(a.giverId) : tr.length ? tr.length + " Eintr\xE4ge bisher, " + (offen ? "Preis folgt" : money(summe)) : "noch nichts gebucht";
+        return '<button type="button" class="aus-kat '.concat(wahl[k] ? "an" : "", '" data-kat="').concat(k, '" ').concat(a ? "disabled" : "", ' aria-pressed="').concat(!!wahl[k], '">\n        <strong>').concat(AUS_KAT[k], "</strong><span>").concat(esc(info), "</span></button>");
+      }).join("");
+      document.querySelectorAll("#ausArt [data-art]").forEach((b) => {
+        b.classList.toggle("an", b.dataset.art === art);
+        b.setAttribute("aria-pressed", String(b.dataset.art === art));
+      });
+      $("#ausOk").disabled = !art || !Object.keys(wahl).some((k) => wahl[k]);
+    };
+    zeichnen();
+    ov.hidden = false;
+    ov.onclick = async (e) => {
+      const k = e.target.closest("[data-kat]");
+      if (k && !k.disabled) {
+        wahl[k.dataset.kat] = !wahl[k.dataset.kat];
+        zeichnen();
+        return;
+      }
+      const a = e.target.closest("[data-art]");
+      if (a) {
+        art = a.dataset.art;
+        zeichnen();
+        return;
+      }
+      if (e.target.closest("#ausAbbrechen") || e.target === ov) {
+        ov.hidden = true;
+        ov.onclick = null;
+        return;
+      }
+      if (e.target.closest("#ausOk") && !$("#ausOk").disabled) {
+        ov.hidden = true;
+        ov.onclick = null;
+        await ausgeben(pid, Object.keys(wahl).filter((x) => wahl[x]), art);
+      }
+    };
+  }
+  async function ausgeben(pid, kats, art) {
+    const p = S.personen[pid];
+    if (!p || !kats.length) return;
+    const t = heuteKey();
+    const sammler = { docs: [], vorher: {}, mirrors: [] };
+    try {
+      for (const k of kats) {
+        if (ausgabeHeute(k)) continue;
+        const did = t + "_" + k;
+        await store.set("ausgaben", did, { tag: t, kat: k, giverId: pid, giverName: p.name, art, ts: Date.now() });
+        sammler.docs.push(did);
+        for (const b of ausgabeTreffer(k, pid)) await ausgabeAufBuchung(b, art, pid, sammler);
+      }
+    } catch (e) {
+      toast("Ausgeben hat nicht ganz geklappt.");
+    }
+    const was = kats.map((k) => AUS_KAT[k]).join(", ");
+    const label = "".concat(p.name, " gibt ").concat(was, " aus (").concat(art === "mitgebracht" ? "selbst mitgebracht" : "Kosten \xFCbernommen", ")");
+    const u = undoMerken(label, "ausgabe", sammler);
+    toast(label, () => undoAusfuehren(u, true), UNDO_TOAST);
   }
   function flashBtn(pid) {
     const btn = document.querySelector('.prod[data-id="'.concat(String(pid).replace(/["\\]/g, ""), '"]'));
@@ -1142,6 +1349,7 @@ var __objRest = (source, exclude) => {
     });
     const liste = tagesEintraege(prodId);
     for (const b of liste) {
+      if (b.ausgegeben) continue;
       const id = b.id;
       delete b.id;
       await store.set("buchungen", id, Object.assign(b, { betrag: -r2(v), preisOffen: false })).catch(() => {
@@ -1447,14 +1655,15 @@ var __objRest = (source, exclude) => {
     const ps = produkte().filter((p) => p.tagespreis);
     $("#tpListe").innerHTML = ps.length ? ps.map((p) => {
       const tp = tagesPreis(p);
-      const e = tagesEintraege(p.id);
+      const e = tagesEintraege(p.id).filter((b) => b.art === "verbrauch");
+      const ag = ausgabeHeute(katVon(p));
       const namen = {};
       e.forEach((b) => {
         const n = S.personen[b.personId] ? S.personen[b.personId].name : "?";
         namen[n] = (namen[n] || 0) + 1;
       });
       const wer = Object.keys(namen).sort((a, b) => a.localeCompare(b, "de")).map((n) => namen[n] > 1 ? namen[n] + "\xD7 " + n : n).join(", ");
-      return '<div class="tp-row">\n      <div><span class="nm">'.concat(esc(p.name), '</span><span class="wer">').concat(e.length ? e.length + " eingetragen: " + esc(wer) : "noch niemand eingetragen", '</span>\n</div>\n      <div class="pr num ').concat(tp === null ? "fehlt" : "", '">').concat(tp === null ? "noch kein Preis" : money(tp), '</div>\n      <button class="btn ').concat(tp === null ? "primary" : "", '" data-tp="').concat(esc(p.id), '">').concat(tp === null ? "Preis eingeben" : "\xC4ndern", "</button>\n    </div>");
+      return '<div class="tp-row">\n      <div><span class="nm">'.concat(esc(p.name), '</span><span class="wer">').concat(e.length ? e.length + " eingetragen: " + esc(wer) : "noch niemand eingetragen", "</span>\n        ").concat(ag ? '<span class="wer aus-hinweis">Heute ausgegeben von '.concat(esc(nameVon(ag.giverId)), " (").concat(ag.art === "mitgebracht" ? "selbst mitgebracht" : "Kosten \xFCbernommen", ")</span>") : "", '\n</div>\n      <div class="pr num ').concat(tp === null ? "fehlt" : "", '">').concat(tp === null ? "noch kein Preis" : money(tp), '</div>\n      <button class="btn ').concat(tp === null ? "primary" : "", '" data-tp="').concat(esc(p.id), '">').concat(tp === null ? "Preis eingeben" : "\xC4ndern", "</button>\n    </div>");
     }).join("") : '<p class="muted">Kein Produkt hat einen Tagespreis. Unter \u201EProdukte\u201C bei Abendessen oder Kuchen \u201ETagespreis\u201C ankreuzen.</p>';
   }
   function renderBroetchen() {
@@ -1468,6 +1677,8 @@ var __objRest = (source, exclude) => {
     $("#brNamen").textContent = brNamen ? "Namen ausblenden" : "Namen anzeigen";
     $("#brNamen").setAttribute("aria-pressed", String(brNamen));
     $("#brTeilen").disabled = !gesamt;
+    const agF = ausgabeHeute("fruehstueck");
+    $("#brAus").innerHTML = agF ? '<p class="aus-box">Fr\xFChst\xFCck heute ausgegeben von <strong>'.concat(esc(nameVon(agF.giverId)), "</strong>").concat(agF.art === "mitgebracht" ? ", selbst mitgebracht. Eine Bestellung beim B\xE4cker ist dann evtl. nicht n\xF6tig." : ", die Kosten \xFCbernimmt er.", "</p>") : "";
     $("#brWarn").innerHTML = vfHeute() ? "" : '<div class="warnbox vf-box"><span>An die Verf\xFCger gedacht? Falls heute jemand von zu Hause kommt: kurz fragen, was er m\xF6chte, und eintragen.</span><button class="btn small" id="vfOk">Ja, erledigt</button></div>';
     if (!rows.length) {
       $("#brListe").innerHTML = '<p class="muted">Kein Produkt ist als Br\xF6tchen markiert. Unter \u201EProdukte\u201C bei den Br\xF6tchensorten \u201EBr\xF6tchen\u201C ankreuzen.</p>';
@@ -1511,14 +1722,19 @@ var __objRest = (source, exclude) => {
       const a = S.abschluesse[id];
       if (a.ts < von) return;
       (a.eintraege || []).forEach((e) => (e.posten || []).forEach((x) => {
-        if (x.betrag < 0 && x.text !== "Korrektur") add(e.name, x.text, x.n, -x.betrag);
+        if (x.betrag <= 0 && x.text !== "Korrektur" && !/^(Storno|Ausgegeben)/.test(x.text)) add(e.name, x.text, x.n, -x.betrag);
       }));
     });
     Object.keys(S.buchungen).forEach((id) => {
       const b = S.buchungen[id];
-      if (b.art !== "verbrauch" || (b.ts || 0) < von) return;
+      if ((b.ts || 0) < von) return;
       const p = S.personen[b.personId];
       if (!p) return;
+      if (b.art === "uebernahme") {
+        if ((b.ts || 0) > (p.bisTs || 0)) umsatz += -(b.betrag || 0);
+        return;
+      }
+      if (b.art !== "verbrauch") return;
       if ((b.ts || 0) <= (p.bisTs || 0)) return;
       add(p.name, b.text, 1, -(b.betrag || 0));
     });
@@ -1588,13 +1804,31 @@ var __objRest = (source, exclude) => {
           namen = [n];
         } else if (v === best && v > 0) namen.push(n);
       });
-      return '<div class="eh-card"><div class="eh-t">'.concat(esc(t.t), '</div><div class="eh-n">').concat(best ? esc(namen.join(" & ")) : "noch frei", '</div><div class="eh-v num">').concat(best ? best + " " + t.e : "Wer will?", "</div></div>");
+      return '<div class="eh-card"><div class="eh-t">'.concat(esc(t.t), '</div><div class="eh-n">').concat(!best ? "noch frei" : namen.length > 2 ? namen.length + " gleichauf" : esc(namen.join(" & ")), '</div><div class="eh-v num">').concat(best ? best + " " + t.e : "Wer will?", "</div></div>");
     });
     let spar = null;
     persons().forEach((p) => {
       const v = stand(p.id).neu;
       if (v > 4e-3 && (!spar || v > spar.v)) spar = { n: p.name, v };
     });
+    const spend = {};
+    const gezaehlt = {};
+    Object.keys(S.ausgaben).forEach((k) => {
+      const a = S.ausgaben[k];
+      if (a.ts >= mStart && !gezaehlt[a.tag + "|" + a.giverId]) {
+        gezaehlt[a.tag + "|" + a.giverId] = 1;
+        const n = nameVon(a.giverId) === "jemandem" ? a.giverName || "?" : nameVon(a.giverId);
+        spend[n] = (spend[n] || 0) + 1;
+      }
+    });
+    let sBest = 0, sNamen = [];
+    Object.keys(spend).forEach((n) => {
+      if (spend[n] > sBest) {
+        sBest = spend[n];
+        sNamen = [n];
+      } else if (spend[n] === sBest) sNamen.push(n);
+    });
+    karten.push('<div class="eh-card"><div class="eh-t">Spendierhose des Monats</div><div class="eh-n">'.concat(!sBest ? "noch frei" : sNamen.length > 2 ? sNamen.length + " gleichauf" : esc(sNamen.join(" & ")), '</div><div class="eh-v num">').concat(sBest ? sBest + "\xD7 ausgegeben" : "Wer gibt einen aus?", "</div></div>"));
     karten.push('<div class="eh-card"><div class="eh-t">Sparschwein der Wache</div><div class="eh-n">'.concat(spar ? esc(spar.n) : "noch frei", '</div><div class="eh-v num">').concat(spar ? money(spar.v) + " Guthaben" : "Keiner im Plus", "</div></div>"));
     $("#ehTafel").innerHTML = karten.join("");
     const j = verbrauchSeit(jStart), g = j.gesamt;
@@ -1632,6 +1866,17 @@ var __objRest = (source, exclude) => {
       "Mit + und \u2212 dein Fr\xFChst\xFCck zusammenstellen, speichern.",
       "Ab jetzt: **ein Tipp** bucht alles auf einmal."
     ] },
+    {
+      t: "Einen ausgeben",
+      f: "gruen",
+      p: [
+        "Bei der Person **\u201EEinen ausgeben\u201C**: Fr\xFChst\xFCck, Kuchen und/oder Abendessen w\xE4hlen.",
+        "**Selbst mitgebracht:** Es kostet heute niemanden etwas.",
+        "**Kosten \xFCbernehmen:** Alle anderen zahlen nichts, die Summe geht auf den Ausgebenden.",
+        "Gilt den **ganzen Tag**, auch f\xFCr alle, die sich sp\xE4ter eintragen."
+      ],
+      n: "Spendierhose des Monats!"
+    },
     {
       t: "K\xFCche",
       f: "rot",
@@ -1684,7 +1929,7 @@ var __objRest = (source, exclude) => {
       t: "Ehrentafel",
       f: "gruen",
       p: [
-        "Titel des Monats: Kaffee-Brandmeister, Eier-Baron & Co.",
+        "Titel des Monats: Kaffee-Brandmeister, Eier-Baron, Spendierhose & Co.",
         "**Abzeichen** in Bronze, Silber und Gold.",
         "Jahresstatistik der Wache zum Staunen."
       ],
@@ -1821,7 +2066,7 @@ var __objRest = (source, exclude) => {
       const a = S.abschluesse[id];
       if (a.ts < von || a.ts >= bis) return;
       (a.eintraege || []).forEach((e) => (e.posten || []).forEach((x) => {
-        if (x.betrag < 0 && x.text !== "Korrektur") add(e.name, x.text, x.n);
+        if (x.betrag <= 0 && x.text !== "Korrektur" && !/^(Storno|Ausgegeben)/.test(x.text)) add(e.name, x.text, x.n);
       }));
     });
     return m;
@@ -1840,7 +2085,7 @@ var __objRest = (source, exclude) => {
         bestellt: Object.keys(b).map((t) => b[t] > 1 ? b[t] + "\xD7 " + t : t).join(", ")
       };
     });
-    const kopie2 = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste }));
+    const kopie2 = JSON.parse(JSON.stringify({ personen: S.personen, produkte: S.produkte, buchungen: S.buchungen, liste: S.liste, ausgaben: S.ausgaben }));
     const list = tsLaden().filter((x) => !(x.tag === tag && x.grund !== "vorher"));
     list.push({ id: uid(), tag, ts: Date.now(), grund, uebersicht, daten: kopie2, fp: tsFingerabdruck() });
     list.sort((a, b) => a.ts - b.ts);
@@ -1910,6 +2155,7 @@ var __objRest = (source, exclude) => {
     S.produkte = x.daten.produkte || {};
     S.buchungen = x.daten.buchungen || {};
     S.liste = x.daten.liste || {};
+    if (x.daten.ausgaben) S.ausgaben = x.daten.ausgaben;
     Object.keys(S.abschluesse).forEach((k) => {
       if (S.abschluesse[k].ts > x.ts) delete S.abschluesse[k];
     });
@@ -2014,15 +2260,15 @@ var __objRest = (source, exclude) => {
       if (b.produktId) counts[b.produktId] = (counts[b.produktId] || 0) + 1;
     });
     const grouped = Object.values(st.items.reduce((m, b) => {
-      const k = b.art === "verbrauch" ? (b.produktId || "") + "|" + b.text : b.id;
-      m[k] = m[k] || { text: b.text, n: 0, betrag: 0, ids: [], art: b.art, offen: false };
+      const k = b.art === "verbrauch" || b.art === "uebernahme" ? b.art + "|" + (b.produktId || "") + "|" + b.text + "|" + (b.ausgegeben || "") : b.id;
+      m[k] = m[k] || { text: b.text, n: 0, betrag: 0, ids: [], art: b.art, offen: false, aus: b.ausgegeben ? nameVon(b.ausgegebenVon) : "" };
       if (b.preisOffen) m[k].offen = true;
       m[k].n++;
       m[k].betrag = r2(m[k].betrag + b.betrag);
       m[k].ids.push(b.id);
       return m;
     }, {}));
-    el.innerHTML = '\n    <div class="phead">\n      <button class="btn small back" data-act="back">\u2039 Liste</button>\n      <h2>'.concat(esc(p.name)).concat(p.gast ? '<span class="gastbadge">Gast</span>' : "", '</h2>\n      <div class="saldo">\n        <div class="big num ').concat(cls(st.neu), '">').concat(money(st.neu), '</div>\n        <div class="lbl">').concat(st.neu < -4e-3 ? "Schulden" : st.neu > 4e-3 ? "Guthaben" : "ausgeglichen").concat(st.items.length ? ", \xDCbertrag ".concat(money(st.alt)) : "", "</div>\n      </div>\n    </div>\n    ").concat(abzeichenHtml(p), '\n    <div class="wieimmer">').concat(p.standard && standardText(p) ? '<button class="btn wi-main" data-act="wieimmer"><strong>Wie immer</strong><span>'.concat(esc(standardText(p)), ", ").concat(money(standardPreis(p)), '</span></button>\n         <button class="btn small" data-act="stdedit">\xC4ndern</button>') : '<button class="btn" data-act="stdedit">+ \u201EWie immer\u201C festlegen</button>', "</div>\n    ").concat(prods.length ? '<div class="prod-grid">'.concat(prods.map((pr) => '\n      <button class="prod" data-id="'.concat(esc(pr.id), '">\n        ').concat(counts[pr.id] ? '<span class="cnt">'.concat(tally(counts[pr.id]), "</span>") : "", '\n        <span class="pn">').concat(esc(pr.name), '</span>\n        <span class="pp num">').concat(pr.tagespreis ? tagesPreis(pr) !== null ? money(tagesPreis(pr)) + " heute" : "Preis folgt" : pr.variabel ? pr.preis ? "ca. " + money(pr.preis) : "Betrag eingeben" : money(pr.preis || 0), "</span>\n      </button>")).join(""), "</div>") : '<p class="muted">Noch keine Produkte. <button class="btn small" data-act="toProd">Produkte anlegen</button></p>', "\n    <h3>Seit dem letzten Abschluss</h3>\n    ").concat(grouped.length ? '<ul class="today">'.concat(grouped.map((g) => "\n      <li><span>".concat(esc(g.text), '</span>\n        <span class="tl">').concat(g.art === "verbrauch" ? tally(g.n) : "", '</span>\n        <span class="num ').concat(g.offen ? "muted" : cls(g.betrag), '">').concat(g.offen ? "Preis folgt" : money(g.betrag), '</span>\n        <button class="btn small" data-rm="').concat(esc(g.ids[g.ids.length - 1]), '" aria-label="Einmal ').concat(esc(g.text), ' entfernen">\u22121</button></li>')).join(""), '\n      <li><span class="sum">Summe</span><span></span><span class="num sum ').concat(cls(st.umsatz), '">').concat(money(st.umsatz), "</span><span></span></li></ul>") : '<p class="muted">Noch nichts gebucht.</p>', '\n    <div class="actions">\n      <button class="btn" data-act="einzahlen">Einzahlung</button>\n      ').concat(ppLaden().bild ? '<button class="btn" data-act="paypal">PayPal-QR</button>' : "", '\n      <button class="btn" data-act="korrektur">Kontostand korrigieren</button>\n      <button class="btn" data-act="rename">Umbenennen</button>\n      <button class="btn" data-act="gruppe">').concat(p.gast ? "Zur Stammbesatzung verschieben" : "Zu den G\xE4sten verschieben", '</button>\n      <button class="btn danger" data-act="delete">Entfernen</button>\n    </div>');
+    el.innerHTML = '\n    <div class="phead">\n      <button class="btn small back" data-act="back">\u2039 Liste</button>\n      <h2>'.concat(esc(p.name)).concat(p.gast ? '<span class="gastbadge">Gast</span>' : "", '</h2>\n      <div class="saldo">\n        <div class="big num ').concat(cls(st.neu), '">').concat(money(st.neu), '</div>\n        <div class="lbl">').concat(st.neu < -4e-3 ? "Schulden" : st.neu > 4e-3 ? "Guthaben" : "ausgeglichen").concat(st.items.length ? ", \xDCbertrag ".concat(money(st.alt)) : "", "</div>\n      </div>\n    </div>\n    ").concat(abzeichenHtml(p), '\n    <div class="wieimmer">').concat(p.standard && standardText(p) ? '<button class="btn wi-main" data-act="wieimmer"><strong>Wie immer</strong><span>'.concat(esc(standardText(p)), ", ").concat(money(standardPreis(p)), '</span></button>\n         <button class="btn small" data-act="stdedit">\xC4ndern</button>') : '<button class="btn" data-act="stdedit">+ \u201EWie immer\u201C festlegen</button>', "</div>\n    ").concat(prods.length ? '<div class="prod-grid">'.concat(prods.map((pr) => '\n      <button class="prod" data-id="'.concat(esc(pr.id), '">\n        ').concat(counts[pr.id] ? '<span class="cnt">'.concat(tally(counts[pr.id]), "</span>") : "", '\n        <span class="pn">').concat(esc(pr.name), '</span>\n        <span class="pp num">').concat(pr.tagespreis ? tagesPreis(pr) !== null ? money(tagesPreis(pr)) + " heute" : "Preis folgt" : pr.variabel ? pr.preis ? "ca. " + money(pr.preis) : "Betrag eingeben" : money(pr.preis || 0), "</span>\n      </button>")).join(""), "</div>") : '<p class="muted">Noch keine Produkte. <button class="btn small" data-act="toProd">Produkte anlegen</button></p>', "\n    <h3>Seit dem letzten Abschluss</h3>\n    ").concat(grouped.length ? '<ul class="today">'.concat(grouped.map((g) => "\n      <li><span>".concat(esc(g.text), '</span>\n        <span class="tl">').concat(g.art === "verbrauch" || g.art === "uebernahme" ? tally(g.n) : "", '</span>\n        <span class="num ').concat(g.offen || g.aus ? "muted" : cls(g.betrag), '">').concat(g.aus ? "ausgegeben von " + esc(g.aus) : g.offen ? "Preis folgt" : money(g.betrag), "</span>\n        ").concat(g.art === "uebernahme" ? "<span></span>" : '<button class="btn small" data-rm="'.concat(esc(g.ids[g.ids.length - 1]), '" aria-label="Einmal ').concat(esc(g.text), ' entfernen">\u22121</button>'), "</li>")).join(""), '\n      <li><span class="sum">Summe</span><span></span><span class="num sum ').concat(cls(st.umsatz), '">').concat(money(st.umsatz), "</span><span></span></li></ul>") : '<p class="muted">Noch nichts gebucht.</p>', '\n    <div class="actions">\n      <button class="btn aus-btn" data-act="ausgeben">Einen ausgeben</button>\n      <button class="btn" data-act="einzahlen">Einzahlung</button>\n      ').concat(ppLaden().bild ? '<button class="btn" data-act="paypal">PayPal-QR</button>' : "", '\n      <button class="btn" data-act="korrektur">Kontostand korrigieren</button>\n      <button class="btn" data-act="rename">Umbenennen</button>\n      <button class="btn" data-act="gruppe">').concat(p.gast ? "Zur Stammbesatzung verschieben" : "Zu den G\xE4sten verschieben", '</button>\n      <button class="btn danger" data-act="delete">Entfernen</button>\n    </div>');
   }
   function renderAbschluss() {
     const rows = persons().map((p) => ({ p, st: stand(p.id) }));
@@ -2093,8 +2339,7 @@ var __objRest = (source, exclude) => {
     if (rm) {
       const id = rm.dataset.rm;
       const b = S.buchungen[id];
-      store.del("buchungen", id).then(() => toast("".concat(b ? b.text : "Buchung", " entfernt"), () => b && store.set("buchungen", id, b).catch(() => {
-      }), UNDO_TOAST)).catch(() => {
+      buchungLoeschen(id).then((zurueck) => toast("".concat(b ? b.text : "Buchung", " entfernt"), zurueck, UNDO_TOAST)).catch(() => {
       });
       return;
     }
@@ -2104,6 +2349,7 @@ var __objRest = (source, exclude) => {
       render();
     }
     if (act === "einzahlen") einzahlen(pid);
+    if (act === "ausgeben") ausgebenDialog(pid);
     if (act === "paypal") qrZeigen(pid);
     if (act === "wieimmer") wieImmer(pid);
     if (act === "stdedit") standardBearbeiten(pid);
