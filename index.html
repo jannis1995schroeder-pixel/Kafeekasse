@@ -203,6 +203,24 @@ tr.active td:first-child{ border-left:4px solid var(--ink); }
 .vf-step{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .vf-step .btn{ min-width:52px; font-size:1.3rem; }
 .vf-zahl{ font-size:2rem; font-weight:700; color:var(--ink); min-width:40px; text-align:center; }
+.fest{ position:relative; overflow:hidden; display:flex; align-items:center; gap:16px; margin-bottom:16px; padding:16px 20px; border-radius:10px;
+  background:linear-gradient(120deg, #FFF3C4 0%, #FFE08A 45%, #FFD25E 100%); color:#3B2A00; border:2px solid #E0A800; box-shadow:0 4px 14px rgba(224,168,0,.25); }
+.fest::before{ content:""; position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; opacity:.7;
+  -webkit-mask-image:linear-gradient(90deg, #000 0%, #000 9%, transparent 22%, transparent 78%, #000 91%, #000 100%);
+  mask-image:linear-gradient(90deg, #000 0%, #000 9%, transparent 22%, transparent 78%, #000 91%, #000 100%);
+  background-image:
+    radial-gradient(circle, #E53935 2.5px, transparent 3px), radial-gradient(circle, #1E88E5 2.5px, transparent 3px),
+    radial-gradient(circle, #43A047 2.5px, transparent 3px), radial-gradient(circle, #8E24AA 2px, transparent 2.5px);
+  background-size:70px 52px, 90px 64px, 110px 46px, 60px 80px;
+  background-position:5px 8px, 40px 30px, 70px 14px, 20px 40px; }
+.fest-icon{ position:relative; font-size:2.4rem; line-height:1; }
+.fest-inhalt{ position:relative; flex:1; display:grid; gap:12px; }
+.fest-text{ font-size:1.35rem; line-height:1.25; }
+.fest-text strong{ font-weight:800; }
+.fest-unter{ font-size:.95rem; opacity:.85; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .fest{ background:linear-gradient(120deg, #4A3A06 0%, #6B520A 50%, #7A5D0B 100%); color:#FFF4D0; border-color:#C9940A; } }
+:root[data-theme="dark"] .fest{ background:linear-gradient(120deg, #4A3A06 0%, #6B520A 50%, #7A5D0B 100%); color:#FFF4D0; border-color:#C9940A; }
+@media (max-width:760px){ #v-liste.has-sel #festBanner{ display:none; } .fest-icon{ font-size:1.8rem; } .fest-text{ font-size:1.1rem; } }
 .aus-grid{ display:grid; gap:8px; }
 .aus-kat{ text-align:left; border:1.5px solid var(--line); background:var(--paper); border-radius:8px; padding:10px 14px; min-height:52px; color:var(--text); }
 .aus-kat strong{ display:block; font-size:1.05rem; }
@@ -300,7 +318,13 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   display:flex; align-items:center; gap:16px; max-width:92vw; box-shadow:0 6px 24px rgba(0,0,0,.3);
   font-size:1.05rem; overflow:hidden;
 }
-#toast #toastUndo{ font-weight:700; font-size:1.05rem; padding:8px 16px; min-height:44px; }
+#toast #toastUndo{ font-weight:700; font-size:1.05rem; padding:8px 16px; min-height:44px; white-space:nowrap; }
+#toast #toastZu{ border:0; background:none; color:inherit; opacity:.7; font-size:1.1rem; min-width:40px; min-height:44px; padding:0; }
+#toast.klein{ left:auto; transform:none; right:calc(12px + env(safe-area-inset-right, 0px)); padding:6px 6px 9px; gap:4px; box-shadow:0 4px 14px rgba(0,0,0,.3); }
+#toast.klein #toastMsg{ display:none; }
+#toast.klein #toastUndo{ font-size:.95rem; padding:6px 12px; min-height:40px; }
+#toast.klein #toastZu{ min-width:34px; min-height:40px; }
+body.toast-platz main{ padding-bottom:110px; }
 #toastBar{ position:absolute; left:0; bottom:0; height:4px; background:var(--ink); width:100%; transform-origin:left; }
 #toastBar.laeuft{ animation:ablauf linear forwards; }
 @keyframes ablauf{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
@@ -349,6 +373,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   <div id="banner"></div>
 
   <section class="view" id="v-liste">
+    <div id="festBanner"></div>
     <div id="inkasso"></div>
     <div class="split" id="split">
       <aside class="people">
@@ -484,7 +509,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
     </div>
   </section>
 
-  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 i</p>
+  <p class="foot" id="foot">Daten werden nur auf diesem Gerät gespeichert. Version 20.10.2026 k</p>
 </main>
 
 <div class="overlay" id="stdOverlay" hidden>
@@ -535,7 +560,7 @@ dialog .row{ display:flex; gap:8px; justify-content:flex-end; margin-top:18px; }
   </div>
 </div>
 
-<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">Rückgängig</button><span id="toastBar"></span></div>
+<div id="toast" hidden role="status"><span id="toastMsg"></span><button id="toastUndo">↶ Rückgängig</button><button id="toastZu" aria-label="Meldung schließen">✕</button><span id="toastBar"></span></div>
 
 <div class="overlay" id="dlg" hidden><dialog open>
   <form method="dialog" id="dlgForm">
@@ -806,11 +831,27 @@ var __objRest = (source, exclude) => {
     });
   }
   let toastTimer = null, undoFn = null;
+  let toastKleinTimer = null;
+  function toastWeg() {
+    $("#toast").hidden = true;
+    $("#toast").classList.remove("klein");
+    document.body.classList.remove("toast-platz");
+    undoFn = null;
+    clearTimeout(toastTimer);
+    clearTimeout(toastKleinTimer);
+  }
   function toast(msg, undo, dauer) {
     $("#toastMsg").textContent = msg;
     undoFn = undo || null;
     $("#toastUndo").hidden = !undo;
+    $("#toastZu").hidden = !undo;
+    $("#toast").classList.remove("klein");
     $("#toast").hidden = false;
+    document.body.classList.toggle("toast-platz", !!undo);
+    clearTimeout(toastKleinTimer);
+    if (undo) toastKleinTimer = setTimeout(() => {
+      $("#toast").classList.add("klein");
+    }, 4e3);
     const bar = $("#toastBar");
     bar.classList.remove("laeuft");
     bar.hidden = !undo;
@@ -820,16 +861,14 @@ var __objRest = (source, exclude) => {
       bar.classList.add("laeuft");
     }
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-      $("#toast").hidden = true;
-      undoFn = null;
-    }, dauer || (undo ? 6e3 : 3500));
+    toastTimer = setTimeout(toastWeg, dauer || (undo ? 6e3 : 3500));
   }
   $("#toastUndo").addEventListener("click", () => {
-    if (undoFn) undoFn();
-    $("#toast").hidden = true;
-    undoFn = null;
+    const f = undoFn;
+    toastWeg();
+    if (f) f();
   });
+  $("#toastZu").addEventListener("click", toastWeg);
   function banner(msg) {
     $("#banner").dataset.fix = msg ? "1" : "";
     $("#banner").innerHTML = msg ? '<div class="banner">'.concat(esc(msg), "</div>") : "";
@@ -1873,7 +1912,8 @@ var __objRest = (source, exclude) => {
         "Bei der Person **\u201EEinen ausgeben\u201C**: Fr\xFChst\xFCck, Kuchen und/oder Abendessen w\xE4hlen.",
         "**Selbst mitgebracht:** Es kostet heute niemanden etwas.",
         "**Kosten \xFCbernehmen:** Alle anderen zahlen nichts, die Summe geht auf den Ausgebenden.",
-        "Gilt den **ganzen Tag**, auch f\xFCr alle, die sich sp\xE4ter eintragen."
+        "Gilt den **ganzen Tag**, auch f\xFCr alle, die sich sp\xE4ter eintragen.",
+        "Auf der **Startseite** sieht jeder das Banner: \u201E\u2026 gibt heute \u2026 aus!\u201C"
       ],
       n: "Spendierhose des Monats!"
     },
@@ -2221,7 +2261,28 @@ var __objRest = (source, exclude) => {
       return { p, neu, tage, faellig };
     }).filter((x) => x.faellig).sort((a, b) => a.neu - b.neu);
   }
+  function renderFestBanner() {
+    const t = heuteKey(), pro = {};
+    Object.keys(S.ausgaben).forEach((k) => {
+      const a = S.ausgaben[k];
+      if (a.tag !== t) return;
+      const g = a.giverId;
+      pro[g] = pro[g] || { name: S.personen[g] ? S.personen[g].name : a.giverName || "Jemand", kats: [], arten: {} };
+      pro[g].kats.push(a.kat);
+      pro[g].arten[a.art] = 1;
+    });
+    const reihenfolge = ["fruehstueck", "kuchen", "abendessen"];
+    const aufzaehlen = (l) => l.length <= 1 ? l[0] || "" : l.slice(0, -1).join(", ") + " und " + l[l.length - 1];
+    const zeilen = Object.keys(pro).map((g) => {
+      const x = pro[g];
+      const was = aufzaehlen(reihenfolge.filter((k) => x.kats.indexOf(k) >= 0).map((k) => AUS_KAT[k]));
+      const wie = x.arten.mitgebracht && x.arten.uebernommen ? "" : x.arten.mitgebracht ? "Selbst mitgebracht" : "Die Kosten \xFCbernimmt " + x.name;
+      return '<div class="fest-zeile"><div class="fest-text"><strong>'.concat(esc(x.name), "</strong> gibt heute <strong>").concat(esc(was), "</strong> aus!</div>\n      ").concat(wie ? '<div class="fest-unter">'.concat(esc(wie), ". Danke!</div>") : '<div class="fest-unter">Danke!</div>', "</div>");
+    });
+    $("#festBanner").innerHTML = zeilen.length ? '<div class="fest" role="status"><span class="fest-icon" aria-hidden="true">\u{1F389}</span><div class="fest-inhalt">'.concat(zeilen.join(""), '</div><span class="fest-icon" aria-hidden="true">\u{1F973}</span></div>') : "";
+  }
   function renderInkasso() {
+    renderFestBanner();
     $("#v-liste").classList.toggle("has-sel", !!ui.sel);
     const l = inkassoListe();
     $("#inkasso").innerHTML = l.length ? '<div class="inkasso">\n    <h2>Inkasso-Ecke</h2>\n    <p>Die Kasse brennt! Bitte bei Gelegenheit etwas einzahlen. Ab '.concat(INKASSO_STAMM_EURO, " \u20AC Schulden oder bei G\xE4sten nach ").concat(INKASSO_GAST_TAGE, " Tagen im Minus.</p>\n    <ul>").concat(l.map((x) => '<li><button data-pid="'.concat(esc(x.p.id), '"><span class="nm">').concat(esc(x.p.name), '</span><span class="bt num">').concat(money(x.neu), "</span>\n      ").concat(x.p.gast ? '<span class="gr">Gast, seit '.concat(x.tage, " Tagen im Minus</span>") : "", "</button></li>")).join(""), "</ul>\n    ").concat(ppLaden().bild ? '<div class="pp-link"><button class="btn small" data-pp>Bequem per PayPal zahlen</button></div>' : "", "\n  </div>") : "";
